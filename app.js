@@ -29,10 +29,14 @@ var TCHART={Normal:{Rock:.5,Ghost:0,Steel:.5},Fire:{Fire:.5,Water:.5,Grass:2,Ice
 function pb(s){return'<svg width="'+s+'" height="'+s+'" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#EF4444"/><path d="M5 50A45 45 0 0 0 95 50Z" fill="white"/><circle cx="50" cy="50" r="45" fill="none" stroke="#1E293B" stroke-width="4"/><line x1="5" y1="50" x2="95" y2="50" stroke="#1E293B" stroke-width="4"/><circle cx="50" cy="50" r="12" fill="white" stroke="#1E293B" stroke-width="4"/><circle cx="50" cy="50" r="5" fill="#1E293B"/></svg>'}
 function toast(m,t){var e=document.createElement('div');e.className='toast toast-'+(t||'ok');e.textContent=m;document.getElementById('toasts').appendChild(e);setTimeout(function(){e.remove()},3500)}
 function h(a){return{'apikey':ANON,'Content-Type':'application/json','Authorization':'Bearer '+(a&&tk?tk:ANON)}}
-// DEV ONLY: Persist the signed-in session in localStorage so the app
+
+// #SECTION: DEV SESSION PERSISTENCE
+// ═══════════════════════════════════════
+// // DEV ONLY: Persist the signed-in session in localStorage so the app
 // stays logged in across refreshes during development.
 // This is convenient for local testing, but it is not a production-
 // grade auth/session approach.
+// ═══════════════════════════════════════
 
 function saveSession(){
   try{
@@ -40,9 +44,11 @@ function saveSession(){
     else{localStorage.removeItem('champions_session')}
   }catch(e){}
 }
+
 // DEV ONLY: Restore the locally saved development session on page load.
 // This should be revisited later if the app moves to a more secure
 // production auth flow.
+
 
 function restoreSession(){
   try{
