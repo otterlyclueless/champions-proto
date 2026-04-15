@@ -85,7 +85,21 @@ function setTheme(t){document.documentElement.setAttribute('data-theme',t);docum
 
 var sbC=false;
 function togSb(){sbC=!sbC;document.getElementById('sb').classList.toggle('c',sbC);document.getElementById('sbTog').textContent=sbC?'▶':'◀'}
-document.querySelectorAll('.sb-item').forEach(function(i){i.addEventListener('click',function(){document.querySelectorAll('.sb-item').forEach(function(n){n.classList.remove('active')});i.classList.add('active');document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show')});document.getElementById('pg-'+i.dataset.p).classList.add('show')})});
+document.querySelectorAll('.sb-item').forEach(function(i){
+  i.addEventListener('click',function(){
+    var target=i.dataset.p;
+
+    if(!usr&&['builds','teams'].indexOf(target)!==-1){
+  showLoginModal('Sign in to view your saved builds, teams, and collection progress.');
+  return;
+}
+
+    document.querySelectorAll('.sb-item').forEach(function(n){n.classList.remove('active')});
+    i.classList.add('active');
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show')});
+    document.getElementById('pg-'+target).classList.add('show');
+  })
+});
 
 // #SECTION: AUTH
 // ═══════════════════════════════════════
@@ -94,9 +108,52 @@ document.querySelectorAll('.sb-item').forEach(function(i){i.addEventListener('cl
 // ═══════════════════════════════════════
 
 
-async function login(){var e=document.getElementById('eIn').value,p=document.getElementById('pIn').value;if(!e||!p)return;try{var r=await fetch(API+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':ANON,'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});var d=await r.json();if(!r.ok)throw new Error(d.error_description||d.msg||'Failed');tk=d.access_token;usr=d.user;saveSession();updAuth();loadUser();toast('Welcome back!')}catch(x){toast(x.message,'err')}}
-function logout(){tk=null;usr=null;allBuilds=[];allTeams=[];uDex={};uShinyDex={};uItems={};saveSession();updAuth();renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();toast('Signed out')}
-function updAuth(){var el=document.getElementById('authEl');if(usr){el.innerHTML='<div class="user-p"><div class="user-av">⚡</div><span style="overflow:hidden;text-overflow:ellipsis;flex:1;font-weight:500">'+usr.email+'</span></div><button class="ab ab-ghost" onclick="logout()" style="margin-top:3px">Sign Out</button>'}else{el.innerHTML='<div class="auth-c"><input type="email" id="eIn" placeholder="Email"></div><div class="auth-c" style="margin-top:3px"><input type="password" id="pIn" placeholder="Password"><button class="ab ab-red" onclick="login()">Go</button></div>'}}
+async function login(){
+  var emailEl=document.getElementById('loginEmail')||document.getElementById('profileEmail')||document.getElementById('eIn');
+  var passEl=document.getElementById('loginPass')||document.getElementById('profilePass')||document.getElementById('pIn');
+  var e=emailEl?emailEl.value:'';
+  var p=passEl?passEl.value:'';
+  if(!e||!p){toast('Enter your email and password','err');return}
+  try{
+    var r=await fetch(API+'/auth/v1/token?grant_type=password',{
+      method:'POST',
+      headers:{'apikey':ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({email:e,password:p})
+    });
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.error_description||d.msg||'Failed');
+    tk=d.access_token;usr=d.user;saveSession();updAuth();
+    closeCm();
+    await loadUser();
+    renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();
+    toast('Welcome back!');
+  }catch(x){toast(x.message,'err')}
+}
+function logout(){
+  tk=null;usr=null;allBuilds=[];allTeams=[];uDex={};uShinyDex={};uItems={};userProfile=null;
+  saveSession();
+  updAuth();renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();updProfileNavIcon();
+  toast('Signed out');
+}
+function updProfileNavIcon(){
+  var el=document.getElementById('profileNavIcon');
+  if(!el)return;
+  var avatar=userProfile&&userProfile.avatar_url?userProfile.avatar_url:'';
+  if(avatar){
+    el.innerHTML='<img src="'+avatar+'" alt="Profile" onerror="this.parentNode.innerHTML=\'<div class=&quot;sb-profile-fallback&quot;>⚡</div>\'">';
+  }else{
+    el.innerHTML='<div class="sb-profile-fallback">⚡</div>';
+  }
+}
+function updAuth(){
+  var el=document.getElementById('authEl');
+  if(usr){
+    el.innerHTML='<div class="user-p"><div class="user-av">⚡</div><span style="overflow:hidden;text-overflow:ellipsis;flex:1;font-weight:500">'+usr.email+'</span></div><button class="ab ab-ghost" onclick="logout()" style="margin-top:3px">Sign Out</button>';
+  }else{
+    el.innerHTML='<div class="auth-c"><input type="email" id="eIn" placeholder="Email"></div><div class="auth-c" style="margin-top:3px"><input type="password" id="pIn" placeholder="Password"><button class="ab ab-red" onclick="login()">Go</button></div>';
+  }
+  updProfileNavIcon();
+}
 
 // #SECTION: CORE DATA LOADING
 // ═══════════════════════════════════════
@@ -125,7 +182,10 @@ function renderDash(){
     '<div class="dash-stat"><div class="ds-label">Shiny Dex</div><div class="ds-val" style="color:var(--purple)">'+Object.keys(uShinyDex).length+'</div><div class="ds-wm">✦</div></div>';
   // Recent builds
   var rb=document.getElementById('recentBuilds');
-  if(!usr){rb.innerHTML='<div class="card" style="padding:1.5rem;text-align:center;max-width:400px"><div style="margin-bottom:.5rem"><img src="icons/logo.png" style="width:64px;height:64px;object-fit:contain"></div><h3 style="font-size:1rem;font-weight:700;margin-bottom:.3rem">Sign In to Get Started</h3><p style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Track your Pokédex, create builds, and assemble teams</p><div style="display:flex;flex-direction:column;gap:.4rem;max-width:280px;margin:0 auto"><input type="email" id="dashEmail" placeholder="Email" style="padding:.5rem .7rem;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-family:inherit;font-size:.85rem"><input type="password" id="dashPass" placeholder="Password" style="padding:.5rem .7rem;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);font-family:inherit;font-size:.85rem"><button class="btn btn-red" style="width:100%;justify-content:center" onclick="var e=document.getElementById(\'dashEmail\').value,p=document.getElementById(\'dashPass\').value;if(e&&p){document.getElementById(\'eIn\')&&(document.getElementById(\'eIn\').value=e);document.getElementById(\'pIn\')&&(document.getElementById(\'pIn\').value=p);login()}">Sign In</button></div></div>';return}
+if(!usr){
+  rb.innerHTML='<div class="card" style="padding:1.3rem;text-align:center;max-width:420px"><div style="margin-bottom:.5rem;font-size:1.8rem">🔐</div><h3 style="font-size:1rem;font-weight:700;margin-bottom:.3rem">Login to save your progress</h3><p style="font-size:.82rem;color:var(--muted);line-height:1.5">Your saved builds, teams, items, and Pokédex progress are tied to your account.</p><button class="btn btn-red" style="margin-top:.9rem" onclick="showLoginModal(\'Sign in to save your builds, teams, items, and collection progress.\')">Login</button></div>';
+  return;
+}
   if(!allBuilds.length){rb.innerHTML='<div style="color:var(--muted);font-size:.85rem">No builds yet</div>';return}
   rb.innerHTML=allBuilds.slice(0,5).map(function(b){
     var sc={hp:'#ef4444',atk:'#f08030',def:'#f7d02c',spa:'#6390f0',spd:'#7ac74c',spe:'#f95587'};
@@ -416,6 +476,29 @@ async function saveBuild(){
 function confirmDelBuild(id,name){document.getElementById('cmEmoji').textContent='⚔️';document.getElementById('cmTitle').textContent='Delete Build?';document.getElementById('cmMsg').textContent='Delete "'+name+'"? This cannot be undone.';document.getElementById('cmBtn').onclick=function(){delBuild(id)};document.getElementById('confirmMod').classList.add('open')}
 async function delBuild(id){try{await rm('builds',{'id':'eq.'+id},true);closeCm();toast('Build deleted');await loadBuilds();renderBuilds();renderDash()}catch(e){toast(e.message,'err')}}
 function closeCm(){document.getElementById('confirmMod').classList.remove('open')}
+function showLoginModal(msg){
+  document.getElementById('cmEmoji').textContent='🔐';
+  document.getElementById('cmTitle').textContent='Login';
+  document.getElementById('cmMsg').innerHTML=(msg?'<div style="font-size:.84rem;color:var(--muted);margin-bottom:.9rem;line-height:1.5">'+msg+'</div>':'')+
+    '<div style="display:flex;flex-direction:column;gap:.65rem;text-align:left">'+
+      '<input type="email" id="loginEmail" placeholder="Email" class="ed-input">'+
+      '<input type="password" id="loginPass" placeholder="Password" class="ed-input">'+
+    '</div>';
+  document.getElementById('cmBtn').textContent='Sign In';
+  document.getElementById('cmBtn').className='btn btn-red';
+  document.getElementById('cmBtn').onclick=function(){login()};
+  document.getElementById('confirmMod').classList.add('open');
+  setTimeout(function(){var el=document.getElementById('loginEmail');if(el)el.focus()},0);
+}
+
+function maybeShowInitialAuthPrompt(){
+  try{
+    if(usr)return;
+    if(sessionStorage.getItem('champions_auth_prompt_shown'))return;
+    sessionStorage.setItem('champions_auth_prompt_shown','1');
+    showLoginModal('Sign in to save your builds, teams, items, and collection progress.');
+  }catch(e){}
+}
 
 // #SECTION: TEAMS
 // ═══════════════════════════════════════
@@ -494,17 +577,17 @@ function renderTeamDetail(c){
     var t1=TC[m.type_1||b.type_1]||TC.Normal;
     var SMAX=32;var max=b.max_sp||66;
     var statMini=['hp','atk','def','spa','spd','spe'].map(function(s){var v=b[s+'_sp']||0;var pct=Math.min(v/SMAX*100,100);return'<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="width:28px;font-size:.6rem;font-weight:600;color:var(--muted);text-align:right">'+s.toUpperCase()+'</span><div style="flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden"><div style="width:'+pct+'%;height:100%;border-radius:2px;background:'+statCols[s]+'"></div></div><span style="width:18px;font-size:.6rem;font-weight:600;text-align:right">'+v+'</span></div>'}).join('');
-    return'<div class="card" style="padding:1rem;cursor:pointer" onclick="showBuildDetail(\''+m.build_id+'\')">'+
-      '<div style="display:flex;gap:1rem;align-items:flex-start">'+
-        '<div style="text-align:center"><img src="'+mImg+'" style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))" onerror="this.style.opacity=\'0.2\'"><div style="margin-top:.3rem;display:flex;gap:3px;justify-content:center"><span class="type-pill" style="background:'+t1.m+'">'+(m.type_1||b.type_1||'?')+'</span>'+(m.type_2||b.type_2?'<span class="type-pill" style="background:'+(TC[m.type_2||b.type_2]||TC.Normal).m+'">'+(m.type_2||b.type_2)+'</span>':'')+'</div></div>'+
-        '<div style="flex:1"><div style="font-weight:700;font-size:.92rem">'+(m.pokemon_name||'?')+(b.is_shiny?' <span style="color:var(--purple);font-size:.7rem">✦</span>':'')+'</div><div style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">'+(m.build_name||b.build_name||'')+'</div>'+
-          '<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.5rem">'+
+    return'<div class="card team-member-card" style="padding:1rem;cursor:pointer" onclick="showBuildDetail(\''+m.build_id+'\')">'+
+      '<div class="team-member-main" style="display:flex;gap:1rem;align-items:flex-start">'+
+        '<div class="team-member-left" style="text-align:center"><img class="team-member-art" src="'+mImg+'" style="width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))" onerror="this.style.opacity=\'0.2\'"><div class="team-member-types" style="margin-top:.3rem;display:flex;gap:3px;justify-content:center"><span class="type-pill" style="background:'+t1.m+'">'+(m.type_1||b.type_1||'?')+'</span>'+(m.type_2||b.type_2?'<span class="type-pill" style="background:'+(TC[m.type_2||b.type_2]||TC.Normal).m+'">'+(m.type_2||b.type_2)+'</span>':'')+'</div></div>'+
+        '<div class="team-member-right" style="flex:1"><div class="team-member-name" style="font-weight:700;font-size:.92rem">'+(m.pokemon_name||'?')+(b.is_shiny?' <span style="color:var(--purple);font-size:.7rem">✦</span>':'')+'</div><div class="team-member-build" style="font-size:.78rem;color:var(--muted);margin-bottom:.4rem">'+(m.build_name||b.build_name||'')+'</div>'+
+          '<div class="team-member-tags" style="display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.5rem">'+
             (m.archetype||b.archetype?'<span class="btag btag-arch">'+(m.archetype||b.archetype)+'</span>':'')+
             (b.item_name||m.item_name?'<span class="btag btag-item">'+(b.item_name||m.item_name)+'</span>':'')+
             (b.nature_name?'<span class="btag btag-nat">'+b.nature_name+'</span>':'')+
             (b.ability?'<span class="btag btag-abi">'+b.ability+'</span>':'')+
           '</div>'+
-          '<div style="display:flex;gap:4px;margin-bottom:.5rem">'+[b.move_1||m.move_1,b.move_2||m.move_2,b.move_3||m.move_3,b.move_4||m.move_4].filter(Boolean).map(function(mv){return'<span class="bmove">'+mv+'</span>'}).join('')+'</div>'+
+          '<div class="team-member-moves" style="display:flex;gap:4px;margin-bottom:.5rem;flex-wrap:wrap">'+[b.move_1||m.move_1,b.move_2||m.move_2,b.move_3||m.move_3,b.move_4||m.move_4].filter(Boolean).map(function(mv){return'<span class="bmove">'+mv+'</span>'}).join('')+'</div>'+
           statMini+
         '</div>'+
       '</div></div>'
@@ -573,8 +656,13 @@ function handleAvatarFile(input){
 }
 async function saveAvatar(dataUrl){
   if(!userProfile)return;
-  try{await upd('user_profiles',{'user_id':'eq.'+usr.id},{avatar_url:dataUrl},true);
-  userProfile.avatar_url=dataUrl;toast('Avatar updated!');renderProfile()}catch(e){toast(e.message,'err')}
+  try{
+    await upd('user_profiles',{'user_id':'eq.'+usr.id},{avatar_url:dataUrl},true);
+    userProfile.avatar_url=dataUrl;
+    updProfileNavIcon();
+    toast('Avatar updated!');
+    renderProfile();
+  }catch(e){toast(e.message,'err')}
 }
 async function saveDisplayName(){var inp=document.getElementById('dnInput');if(!inp||!userProfile)return;var name=inp.value.trim();if(!name)return;try{await upd('user_profiles',{'user_id':'eq.'+usr.id},{display_name:name},true);userProfile.display_name=name;toast('Name updated!');renderProfile()}catch(e){toast(e.message,'err')}}
 
@@ -608,7 +696,11 @@ async function checkAchievements(){
 
 function renderProfile(){
   var c=document.getElementById('profileContent');
-  if(!usr){c.innerHTML='<div class="empty"><div class="em">🔒</div>Sign in to view your profile</div>';return}
+if(!usr){
+  c.innerHTML='<div class="card" style="max-width:420px;margin:0 auto;text-align:center"><div style="font-size:2rem;margin-bottom:.35rem">🔐</div><h3 style="font-size:1rem;font-weight:700;margin-bottom:.3rem">Login to view your profile</h3><p style="font-size:.84rem;color:var(--muted);line-height:1.5">Sign in to access your saved profile, achievements, teams, and build history.</p><button class="btn btn-red" style="margin-top:.9rem" onclick="showLoginModal(\'Sign in to view your trainer profile and saved progress.\')">Login</button></div>';
+  updProfileNavIcon();
+  return
+}
   var dn=userProfile?userProfile.display_name||usr.email.split('@')[0]:usr.email.split('@')[0];
   var obtC=Object.keys(uDex).length,shC=Object.keys(uShinyDex).length,blC=allBuilds.length,tmC=allTeams.length;
   var achUnlocked=allAch.filter(function(a){return userAch[a.id]}).length;
@@ -634,7 +726,8 @@ function renderProfile(){
   acts.sort(function(a,b){return new Date(b.time)-new Date(a.time)});
   actHtml+=acts.slice(0,8).map(function(a){var d=new Date(a.time);var ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});return'<div class="act-item">'+(a.img?'<img src="'+a.img+'" onerror="this.style.display=\'none\'">':'<div style="width:36px;height:36px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">🏆</div>')+'<span class="act-text">'+a.text+'</span><span class="act-time">'+ds+'</span></div>'}).join('')||'<div style="color:var(--muted);font-size:.85rem">No activity yet</div>';
   actHtml+='</div>';
-  c.innerHTML=card+achHtml+actHtml
+  c.innerHTML=card+achHtml+actHtml;
+updProfileNavIcon()
 }
 
 // #SECTION: BUILD UTILITIES
@@ -665,12 +758,70 @@ function teamCoverageHtml(members){
   if(!members||!members.length)return'<p style="color:var(--muted);font-size:.85rem">Add members to see coverage</p>';
   var offHits={},defWeaks={};
   ALL_T.forEach(function(t){offHits[t]=0;defWeaks[t]=0});
-  // Count both offensive pressure and shared defensive weaknesses across the full 18-type chart.
-  members.forEach(function(m){var t1=m.type_1,t2=m.type_2;
-    ALL_T.forEach(function(dt){var mult=TCHART[t1]&&TCHART[t1][dt]!==undefined?TCHART[t1][dt]:1;if(mult>=2)offHits[dt]++;if(t2){var m2=TCHART[t2]&&TCHART[t2][dt]!==undefined?TCHART[t2][dt]:1;if(m2>=2)offHits[dt]++}});
-    ALL_T.forEach(function(at){var mult=TCHART[at]&&TCHART[at][t1]!==undefined?TCHART[at][t1]:1;if(t2)mult*=(TCHART[at]&&TCHART[at][t2]!==undefined?TCHART[at][t2]:1);if(mult>=2)defWeaks[at]++})
+  members.forEach(function(m){
+    var t1=m.type_1,t2=m.type_2;
+    ALL_T.forEach(function(dt){
+      var mult=TCHART[t1]&&TCHART[t1][dt]!==undefined?TCHART[t1][dt]:1;
+      if(mult>=2)offHits[dt]++;
+      if(t2){
+        var m2=TCHART[t2]&&TCHART[t2][dt]!==undefined?TCHART[t2][dt]:1;
+        if(m2>=2)offHits[dt]++;
+      }
+    });
+    ALL_T.forEach(function(at){
+      var mult=TCHART[at]&&TCHART[at][t1]!==undefined?TCHART[at][t1]:1;
+      if(t2)mult*=(TCHART[at]&&TCHART[at][t2]!==undefined?TCHART[at][t2]:1);
+      if(mult>=2)defWeaks[at]++;
+    });
   });
-  // Full 18-type grid
+
+  var uncov=ALL_T.filter(function(t){return offHits[t]===0});
+  var danger=ALL_T.filter(function(t){return defWeaks[t]>=2}).sort(function(a,b){return defWeaks[b]-defWeaks[a]});
+  var strong=ALL_T.filter(function(t){return offHits[t]>=3}).sort(function(a,b){return offHits[b]-offHits[a]});
+  var isMobile=window.innerWidth<=768;
+
+  if(isMobile){
+    var riskRows=ALL_T.filter(function(t){return offHits[t]===0||defWeaks[t]>=2}).sort(function(a,b){
+      var aScore=(defWeaks[a]>=2?100+defWeaks[a]:0)+(offHits[a]===0?10:0);
+      var bScore=(defWeaks[b]>=2?100+defWeaks[b]:0)+(offHits[b]===0?10:0);
+      return bScore-aScore;
+    });
+
+    var html='';
+    html+='<div style="display:grid;grid-template-columns:1fr;gap:.75rem">';
+    html+='<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:.85rem">'+
+      '<div style="font-size:.72rem;font-weight:800;color:var(--green);margin-bottom:.45rem;letter-spacing:.02em">⚔ Strong coverage</div>'+
+      (strong.length?'<div style="display:flex;flex-wrap:wrap;gap:5px">'+strong.map(function(t){return'<span class="type-pill" style="background:'+(TC[t]||TC.Normal).m+';font-size:9px;padding:3px 8px">'+t+'</span>'}).join('')+'</div>':'<div style="font-size:.78rem;color:var(--muted)">No standout offensive clusters yet.</div>')+
+    '</div>';
+
+    html+='<div style="background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.14);border-radius:12px;padding:.85rem">'+
+      '<div style="font-size:.72rem;font-weight:800;color:var(--red);margin-bottom:.55rem;letter-spacing:.02em">⚠ Watch-outs</div>'+
+      (riskRows.length?'<div style="display:flex;flex-direction:column;gap:.45rem">'+riskRows.map(function(t){
+        var notes=[];
+        if(offHits[t]===0)notes.push('no coverage');
+        if(defWeaks[t]>=2)notes.push('weak ×'+defWeaks[t]);
+        return'<div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.5rem .6rem;border-radius:10px;background:var(--surface);border:1px solid var(--border)">'+
+          '<div style="display:flex;align-items:center;gap:.45rem;min-width:0"><span class="type-pill" style="background:'+(TC[t]||TC.Normal).m+';font-size:9px;padding:3px 8px">'+t+'</span></div>'+
+          '<span style="font-size:.72rem;color:var(--muted);text-align:right">'+notes.join(' · ')+'</span>'+
+        '</div>';
+      }).join('')+'</div>':'<div style="font-size:.78rem;color:var(--green)">No major risk clusters. ✓</div>')+
+    '</div>';
+
+    html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.85rem">'+
+      '<div style="font-size:.72rem;font-weight:800;color:var(--text);margin-bottom:.55rem;letter-spacing:.02em">18-type snapshot</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.4rem">'+ALL_T.map(function(t){
+        var tone=defWeaks[t]>=2?'rgba(239,68,68,.08)':offHits[t]>=2?'rgba(34,197,94,.08)':'var(--surface2)';
+        var bd=defWeaks[t]>=2?'1px solid rgba(239,68,68,.25)':offHits[t]>=2?'1px solid rgba(34,197,94,.22)':'1px solid var(--border)';
+        return'<div style="border-radius:10px;padding:.45rem .5rem;background:'+tone+';border:'+bd+'">'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:.35rem;margin-bottom:.25rem"><span class="type-pill" style="background:'+(TC[t]||TC.Normal).m+';font-size:8px;padding:2px 6px">'+t+'</span><span style="font-size:.65rem;color:var(--muted)">⚔ '+offHits[t]+' · 🛡 '+defWeaks[t]+'</span></div>'+
+        '</div>';
+      }).join('')+'</div>'+
+    '</div>';
+
+    html+='</div>';
+    return html;
+  }
+
   var html='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:1.2rem">';
   ALL_T.forEach(function(t){
     var off=offHits[t],def=defWeaks[t];
@@ -681,29 +832,21 @@ function teamCoverageHtml(members){
       '<div style="display:flex;justify-content:center;gap:6px;margin-top:4px;font-size:.6rem;font-weight:600">'+
         '<span style="color:var(--green)" title="Can hit SE">⚔'+off+'</span>'+
         '<span style="color:'+(def>=2?'var(--red)':'var(--muted2)')+'" title="Threatens team">🛡'+def+'</span>'+
-      '</div></div>'
+      '</div></div>';
   });
   html+='</div>';
-  // Summary
-  var uncov=ALL_T.filter(function(t){return offHits[t]===0});
-  var danger=ALL_T.filter(function(t){return defWeaks[t]>=2}).sort(function(a,b){return defWeaks[b]-defWeaks[a]});
-  var strong=ALL_T.filter(function(t){return offHits[t]>=3}).sort(function(a,b){return offHits[b]-offHits[a]});
   html+='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">';
-  // Strong
   html+='<div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:10px;padding:.7rem"><div style="font-size:.65rem;font-weight:700;color:var(--green);margin-bottom:.4rem">⚔️ STRONG ('+strong.length+')</div>';
   html+=strong.length?'<div style="display:flex;flex-wrap:wrap;gap:3px">'+strong.map(function(t){return'<span class="type-pill" style="background:'+(TC[t]||TC.Normal).m+';font-size:8px">'+t+'</span>'}).join('')+'</div>':'<span style="font-size:.72rem;color:var(--muted)">—</span>';
   html+='</div>';
-  // Uncovered
   html+='<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:.7rem"><div style="font-size:.65rem;font-weight:700;color:var(--red);margin-bottom:.4rem">❌ NO COVERAGE ('+uncov.length+')</div>';
   html+=uncov.length?'<div style="display:flex;flex-wrap:wrap;gap:3px">'+uncov.map(function(t){return'<span class="type-pill" style="background:'+(TC[t]||TC.Normal).m+';font-size:8px">'+t+'</span>'}).join('')+'</div>':'<span style="font-size:.72rem;color:var(--green)">Full coverage! ✓</span>';
   html+='</div>';
-  // Dangerous
   html+='<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:.7rem"><div style="font-size:.65rem;font-weight:700;color:var(--red);margin-bottom:.4rem">⚠️ WEAK TO ('+danger.length+')</div>';
   html+=danger.length?'<div style="display:flex;flex-wrap:wrap;gap:3px">'+danger.map(function(t){return'<span class="type-pill" style="background:'+(TC[t]||TC.Normal).m+';font-size:8px">'+t+' ×'+defWeaks[t]+'</span>'}).join('')+'</div>':'<span style="font-size:.72rem;color:var(--green)">Solid! ✓</span>';
   html+='</div></div>';
-  // Legend
   html+='<div style="margin-top:.6rem;font-size:.6rem;color:var(--muted);display:flex;gap:1rem"><span>⚔ = team members that can hit SE</span><span>🛡 = team members threatened by this type</span><span style="color:var(--green)">Green = strong coverage</span><span style="color:var(--red)">Red border = dangerous</span></div>';
-  return html
+  return html;
 }
 
 // #SECTION: BATTLE LOG
@@ -770,7 +913,7 @@ loadUser=async function(){await Promise.all([loadBuilds(),loadTeamRoster(),loadU
 // ═══════════════════════════════════════
 updAuth();
 if(restoreSession()){updAuth();loadUser()}
-loadPkmn();loadItems();loadNatures();loadAchievements();
+loadPkmn();loadItems();loadNatures();loadAchievements();setTimeout(maybeShowInitialAuthPrompt,250);
 
 // ═══════════════════════════════════════
 // PWA / SERVICE WORKER
