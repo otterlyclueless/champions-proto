@@ -259,6 +259,112 @@ function renderDex(){
   }).join('')
 }
 
+// #SECTION: STAT CALCULATOR
+// ═══════════════════════════════════════
+// STAT CALCULATOR
+// Shared stat calc functions for the Pokédex detail panel.
+// Bars/Hex toggle, SP sliders, nature dropdown, live Lv50 calc.
+// ═══════════════════════════════════════
+
+var BSC={hp:'#a78bfa',atk:'#f97316',spa:'#fdba74',def:'#3b82f6',spd:'#7dd3fc',spe:'#fb7185'};
+var BSN={hp:'HP',atk:'Atk',def:'Def',spa:'SpA',spd:'SpD',spe:'Spe'};
+var BSK=['hp','atk','def','spa','spd','spe'];
+var BSDB={hp:'base_hp',atk:'base_atk',def:'base_def',spa:'base_spa',spd:'base_spd',spe:'base_spe'};
+var BSNATMAP={hp:'hp',attack:'atk',defense:'def',sp_attack:'spa',sp_defense:'spd',speed:'spe'};
+var BSNATNAMES={hp:'HP',attack:'Atk',defense:'Def',sp_attack:'SpA',sp_defense:'SpD',speed:'Spe'};
+var BSCALC_MAX=300;
+var dexSP={hp:0,atk:0,def:0,spa:0,spd:0,spe:0};
+var dexNature=null,dexPoke=null;
+
+function bsCalcStat(key,base,spVal){
+  var m=1;if(dexNature){if(BSNATMAP[dexNature.increased_stat]===key)m=1.1;if(BSNATMAP[dexNature.decreased_stat]===key)m=0.9}
+  if(key==='hp')return Math.floor((2*base+31)*50/100)+60+spVal;
+  return Math.floor((Math.floor((2*base+31)*50/100)+5)*m)+spVal;
+}
+function bsGetCalcStats(){
+  return BSK.map(function(k){
+    var base=dexPoke[BSDB[k]]||0,spVal=dexSP[k]||0,m=1;
+    if(dexNature){if(BSNATMAP[dexNature.increased_stat]===k)m=1.1;if(BSNATMAP[dexNature.decreased_stat]===k)m=0.9}
+    return{key:k,base:base,sp:spVal,calc:bsCalcStat(k,base,spVal),natMod:m};
+  });
+}
+function bsBuildBars(){
+  return '<div class="bs-grid">'+BSK.map(function(k){
+    return '<div class="bs-row"><span class="bs-label">'+BSN[k]+'</span><div class="bs-track"><div class="bs-fill" id="bf-'+k+'" style="background:'+BSC[k]+'"></div></div><span class="bs-val" style="color:'+BSC[k]+'" id="bv-'+k+'">0</span><span class="bs-nat-ind" id="bi-'+k+'"></span></div>';
+  }).join('')+'</div>';
+}
+function bsUpdateBars(){
+  bsGetCalcStats().forEach(function(st){
+    var f=document.getElementById('bf-'+st.key),v=document.getElementById('bv-'+st.key),i=document.getElementById('bi-'+st.key);
+    if(f)f.style.width=Math.min(st.calc/BSCALC_MAX*100,100)+'%';
+    if(v)v.textContent=st.calc;
+    if(i)i.innerHTML=st.natMod>1?'<span style="color:var(--green)">▲</span>':st.natMod<1?'<span style="color:var(--red)">▼</span>':'';
+  });
+}
+function bsBuildHex(){
+  var typeCol=(TC[dexPoke.type_1]||TC.Normal).m;
+  var cx=190,cy=185,r=85,angles=[-90,-30,30,90,150,210],order=[0,1,2,5,4,3];
+  function polar(a,rd){var d=a*Math.PI/180;return{x:cx+rd*Math.cos(d),y:cy+rd*Math.sin(d)}}
+  var outerPts=angles.map(function(a){var p=polar(a,r);return p.x+','+p.y}).join(' ');
+  var g75=angles.map(function(a){var p=polar(a,r*.75);return p.x+','+p.y}).join(' ');
+  var g50=angles.map(function(a){var p=polar(a,r*.5);return p.x+','+p.y}).join(' ');
+  var g25=angles.map(function(a){var p=polar(a,r*.25);return p.x+','+p.y}).join(' ');
+  var spokes=angles.map(function(a){var p=polar(a,r);return'<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="var(--border)" stroke-width="1"/>'}).join('');
+  var labels='';
+  for(var i=0;i<6;i++){
+    var si=order[i],k=BSK[si],pt=polar(angles[i],r+28);
+    var anchor='middle';if(angles[i]===-30||angles[i]===30)anchor='start';if(angles[i]===150||angles[i]===210)anchor='end';
+    var isTop=angles[i]===-90,isBot=angles[i]===90;
+    if(isTop){labels+='<text x="'+pt.x+'" y="'+(pt.y-10)+'" text-anchor="middle" fill="'+BSC[k]+'" font-size="11" font-weight="700" font-family="Plus Jakarta Sans,sans-serif">'+BSN[k]+'</text><text x="'+pt.x+'" y="'+(pt.y+5)+'" text-anchor="middle" id="hv-'+k+'" fill="'+BSC[k]+'" font-size="14" font-weight="800" font-family="Plus Jakarta Sans,sans-serif" style="font-variant-numeric:tabular-nums">0</text>'}
+    else if(isBot){labels+='<text x="'+pt.x+'" y="'+(pt.y+4)+'" text-anchor="middle" id="hv-'+k+'" fill="'+BSC[k]+'" font-size="14" font-weight="800" font-family="Plus Jakarta Sans,sans-serif" style="font-variant-numeric:tabular-nums">0</text><text x="'+pt.x+'" y="'+(pt.y+18)+'" text-anchor="middle" fill="'+BSC[k]+'" font-size="11" font-weight="700" font-family="Plus Jakarta Sans,sans-serif">'+BSN[k]+'</text>'}
+    else{labels+='<text x="'+pt.x+'" y="'+(pt.y-4)+'" text-anchor="'+anchor+'" fill="'+BSC[k]+'" font-size="11" font-weight="700" font-family="Plus Jakarta Sans,sans-serif">'+BSN[k]+'</text><text x="'+pt.x+'" y="'+(pt.y+12)+'" text-anchor="'+anchor+'" id="hv-'+k+'" fill="'+BSC[k]+'" font-size="14" font-weight="800" font-family="Plus Jakarta Sans,sans-serif" style="font-variant-numeric:tabular-nums">0</text>'}
+  }
+  return '<div class="bs-hex-wrap"><svg class="bs-hex-svg" viewBox="0 0 380 380"><polygon points="'+outerPts+'" fill="none" stroke="var(--border)" stroke-width="1.5"/><polygon points="'+g75+'" fill="none" stroke="var(--border)" stroke-width=".5" opacity=".35"/><polygon points="'+g50+'" fill="none" stroke="var(--border)" stroke-width=".5" opacity=".35"/><polygon points="'+g25+'" fill="none" stroke="var(--border)" stroke-width=".5" opacity=".35"/>'+spokes+'<polygon id="hexPoly" points="'+cx+','+cy+'" fill="'+typeCol+'25" stroke="'+typeCol+'" stroke-width="2.5" stroke-linejoin="round" style="transition:all .3s ease"/>'+labels+'</svg></div>';
+}
+function bsUpdateHex(){
+  var stats=bsGetCalcStats(),cx=190,cy=185,r=85,angles=[-90,-30,30,90,150,210],order=[0,1,2,5,4,3];
+  function polar(a,rd){var d=a*Math.PI/180;return{x:cx+rd*Math.cos(d),y:cy+rd*Math.sin(d)}}
+  var pts=[];for(var i=0;i<6;i++){var si=order[i];var pct=Math.min(stats[si].calc/BSCALC_MAX,1);var pt=polar(angles[i],r*Math.max(pct,0.05));pts.push(pt.x+','+pt.y)}
+  var poly=document.getElementById('hexPoly');if(poly)poly.setAttribute('points',pts.join(' '));
+  for(var i=0;i<6;i++){var si=order[i],st=stats[si],el=document.getElementById('hv-'+st.key);if(el){el.textContent=st.calc+(st.natMod>1?' ▲':st.natMod<1?' ▼':'');el.style.fill=st.natMod>1?'var(--green)':st.natMod<1?'var(--red)':BSC[st.key]}}
+}
+function bsUpdateBST(){var stats=bsGetCalcStats(),total=stats.reduce(function(s,st){return s+st.calc},0);var cls=total>=600?'bst-elite':total>=500?'bst-high':total>=400?'bst-mid':'bst-low';var el=document.getElementById('bstVal');if(el){el.textContent=total;el.className='bs-total-val '+cls}}
+function bsBuildSP(){
+  var rows=BSK.map(function(k){var col=BSC[k];return '<div class="dsp-row"><span class="dsp-name" style="color:'+col+'">'+BSN[k]+'</span><button class="dsp-pm" onpointerdown="dspAdj(\''+k+'\',-1)">−</button><div class="dsp-slider-wrap"><div class="dsp-slider-track"><div class="dsp-slider-fill" id="sf-'+k+'" style="background:'+col+'"></div></div><input type="range" class="dsp-slider" id="sr-'+k+'" min="0" max="'+SP_MAX+'" value="0" style="--thumb-col:'+col+'" oninput="dspSlide(\''+k+'\',this.value)"></div><button class="dsp-pm" onpointerdown="dspAdj(\''+k+'\',1)">+</button><input class="dsp-val-box" id="sv-'+k+'" type="number" min="0" max="'+SP_MAX+'" value="0" style="color:'+col+'" onchange="dspSet(\''+k+'\',this.value)"></div>'}).join('');
+  return '<div class="dsp-section"><div class="dsp-header"><span class="dsp-title">SP Allocation</span><div class="dsp-remain-wrap"><div class="dsp-remain-num ok" id="dspRemainNum">'+SP_MAX+'</div><div class="dsp-remain-label">remaining of '+SP_MAX+'</div></div></div><div class="dsp-grid">'+rows+'</div></div>';
+}
+function bsUpdateSP(){
+  var total=BSK.reduce(function(s,k){return s+dexSP[k]},0),remain=SP_MAX-total;
+  var el=document.getElementById('dspRemainNum');if(el){el.textContent=remain;el.className='dsp-remain-num '+(remain<0?'over':remain<=5?'warn':'ok')}
+  BSK.forEach(function(k){var fill=document.getElementById('sf-'+k);var val=document.getElementById('sv-'+k);var range=document.getElementById('sr-'+k);if(fill)fill.style.width=(dexSP[k]/32*100)+'%';if(val&&document.activeElement!==val)val.value=dexSP[k];if(range&&document.activeElement!==range)range.value=dexSP[k]});
+}
+function bsRefresh(){bsUpdateBars();bsUpdateHex();bsUpdateBST();bsUpdateSP()}
+function dspSlide(key,val){dexSP[key]=Math.max(0,Math.min(32,parseInt(val)||0));bsRefresh()}
+function dspSet(key,val){dexSP[key]=Math.max(0,Math.min(32,parseInt(val)||0));bsRefresh()}
+function dspAdj(key,delta){dspSet(key,dexSP[key]+delta)}
+function bsNatureChange(val){
+  if(!val)dexNature=null;else{var n=allNatures.find(function(x){return x.id===val});dexNature=n&&n.increased_stat?n:null}
+  var h=document.getElementById('bsNatHint');if(h){if(dexNature)h.innerHTML='<span style="color:var(--green);font-weight:700">▲ '+BSNATNAMES[dexNature.increased_stat]+' (+10%)</span> &nbsp; <span style="color:var(--red);font-weight:700">▼ '+BSNATNAMES[dexNature.decreased_stat]+' (−10%)</span>';else h.textContent='No stat modification'}
+  bsRefresh();
+}
+function bsSwitchView(view){
+  document.querySelectorAll('.bs-view-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===view)});
+  document.getElementById('bsBarsView').classList.toggle('active',view==='bars');document.getElementById('bsHexView').classList.toggle('active',view==='hex');bsRefresh();
+}
+function bsBuildSection(p){
+  dexPoke=p;dexSP={hp:0,atk:0,def:0,spa:0,spd:0,spe:0};dexNature=null;
+  var stats=bsGetCalcStats();if(stats.reduce(function(s,st){return s+st.calc},0)===0)return '';
+  var html='<select class="bs-nat-select" onchange="bsNatureChange(this.value)"><option value="">Nature — Neutral</option>';
+  allNatures.forEach(function(n){if(!n.increased_stat)return;html+='<option value="'+n.id+'">'+n.name+' (+'+BSNATNAMES[n.increased_stat]+' / −'+BSNATNAMES[n.decreased_stat]+')</option>'});
+  html+='</select><div class="bs-nat-hint" id="bsNatHint">No stat modification</div>';
+  html+='<div class="bs-view-toggle"><button class="bs-view-btn active" data-view="bars" onclick="bsSwitchView(\'bars\')">Bars</button><button class="bs-view-btn" data-view="hex" onclick="bsSwitchView(\'hex\')">Hex</button></div>';
+  html+='<div class="bs-view active" id="bsBarsView">'+bsBuildBars()+'</div><div class="bs-view" id="bsHexView">'+bsBuildHex()+'</div>';
+  html+='<div class="bs-total"><span class="bs-total-label">Lv50 Stat Total</span><span class="bs-total-val" id="bstVal">0</span></div>';
+  html+=bsBuildSP();
+  html+='<div class="bs-formula">All stats at Lv50 · IVs max (31) · <code>1 SP = +1 stat</code></div>';
+  return html;
+}
+
 // #SECTION: POKÉDEX DETAIL PANEL
 // ───────────────────────────────────────
 // POKÉDEX DETAIL PANEL
@@ -271,11 +377,14 @@ function openDet(pid){
   var gd=t2?'linear-gradient(135deg,'+t1.m+'DD,'+t2.m+'DD)':'linear-gradient(135deg,'+t1.m+'CC,'+t1.d+'DD)';
   var obt=!!uDex[p.id];var hasS=!!p.shiny_url;
   var mH=renderMatchupHtml(p.type_1,p.type_2);
+  var bsH=bsBuildSection(p);
   var html='<div class="panel-art" style="background:'+gd+'"><div class="wm">'+pb(200)+'</div><button class="p-close" onclick="closeDet()">✕</button><span class="p-dex">#'+String(p.dex_number).padStart(4,'0')+'</span>'+(p.image_url?'<img id="dImg" src="'+p.image_url+'" alt="'+p.name+'">':'')+(hasS?'<div class="sw-bar"><button class="sw-on" id="swN" onclick="dSwap(false,\''+p.id+'\')">Standard</button><button class="sw-off" id="swS" onclick="dSwap(true,\''+p.id+'\')">✦ Shiny</button></div>':'')+'</div>';
   html+='<div class="p-header"><h2>'+p.name+'</h2><div class="p-meta"><span class="type-pill" style="background:'+t1.m+'">'+p.type_1+'</span>'+(p.type_2?'<span class="type-pill" style="background:'+(TC[p.type_2]||TC.Normal).m+'">'+p.type_2+'</span>':'')+(p.form&&p.form!=='Base'?'<span class="form-pill '+(p.form==='Mega'?'form-mega':'form-regional')+'">'+p.form+'</span>':'')+'</div>'+(usr?'<button class="obt-tog '+(obt?'on':'off')+'" onclick="togObt(event,\''+p.id+'\');openDet(\''+p.id+'\')"><div class="obt-box '+(obt?'on':'off')+'">'+(obt?'✓':'')+'</div>'+(obt?'Obtained':'Not Obtained')+'</button>':'')+'</div>';
+  if(bsH){html+='<button class="sec-tog" onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\';if(b.style.display!==\'none\')bsRefresh()"><div class="sl"><span>📊</span><span>Stats & Calculator</span></div><span>▾</span></button><div class="sec-body">'+bsH+'</div>';}
   html+='<button class="sec-tog" onclick="var b=this.nextElementSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'"><div class="sl"><span>⚡</span><span>Type Effectiveness</span></div><span>▾</span></button><div class="sec-body">'+mH+'</div>';
   document.getElementById('detInner').innerHTML=html;
-  document.getElementById('detP').classList.add('open')
+  document.getElementById('detP').classList.add('open');
+  requestAnimationFrame(function(){requestAnimationFrame(function(){bsRefresh()})});
 }
 function closeDet(){document.getElementById('detP').classList.remove('open')}
 function dSwap(s,pid){var p=allPkmn.find(function(x){return x.id===pid});if(!p)return;var img=document.getElementById('dImg');if(!img)return;img.src=s?p.shiny_url:p.image_url;document.getElementById('swN').className=s?'sw-off':'sw-on';document.getElementById('swS').className=s?'sw-on':'sw-off'}
