@@ -524,17 +524,23 @@ function bsUpdateHex(){
 }
 function bsUpdateBST(){var stats=bsGetCalcStats(),total=stats.reduce(function(s,st){return s+st.calc},0);var cls=total>=600?'bst-elite':total>=500?'bst-high':total>=400?'bst-mid':'bst-low';var el=document.getElementById('bstVal');if(el){el.textContent=total;el.className='bs-total-val '+cls}}
 function bsBuildSP(){
-  var rows=BSK.map(function(k){var col=BSC[k];return '<div class="dsp-row"><span class="dsp-name" style="color:'+col+'">'+BSN[k]+'</span><button class="dsp-pm" onpointerdown="dspAdj(\''+k+'\',-1)">−</button><div class="dsp-slider-wrap"><div class="dsp-slider-track"><div class="dsp-slider-fill" id="sf-'+k+'" style="background:'+col+'"></div></div><input type="range" class="dsp-slider" id="sr-'+k+'" min="0" max="'+SP_MAX+'" value="0" style="--thumb-col:'+col+'" oninput="dspSlide(\''+k+'\',this.value)"></div><button class="dsp-pm" onpointerdown="dspAdj(\''+k+'\',1)">+</button><input class="dsp-val-box" id="sv-'+k+'" type="number" min="0" max="'+SP_MAX+'" value="0" style="color:'+col+'" onchange="dspSet(\''+k+'\',this.value)"></div>'}).join('');
+  var rows=BSK.map(function(k){var col=BSC[k];return '<div class="dsp-row"><span class="dsp-name" style="color:'+col+'">'+BSN[k]+'</span><button class="dsp-pm" onpointerdown="dspAdj(\''+k+'\',-1)">−</button><div class="dsp-slider-wrap"><div class="dsp-slider-track"><div class="dsp-slider-fill" id="sf-'+k+'" style="background:'+col+'"></div></div><input type="range" class="dsp-slider" id="sr-'+k+'" min="0" max="32" value="0" style="--thumb-col:'+col+'" oninput="dspSlide(\''+k+'\',this.value)"></div><button class="dsp-pm" onpointerdown="dspAdj(\''+k+'\',1)">+</button><input class="dsp-val-box" id="sv-'+k+'" type="number" min="0" max="32" value="0" style="color:'+col+'" onchange="dspSet(\''+k+'\',this.value)"></div>'}).join('');
   return '<div class="dsp-section"><div class="dsp-header"><span class="dsp-title">SP Allocation</span><div class="dsp-remain-wrap"><div class="dsp-remain-num ok" id="dspRemainNum">'+SP_MAX+'</div><div class="dsp-remain-label">remaining of '+SP_MAX+'</div></div></div><div class="dsp-grid">'+rows+'</div></div>';
 }
 function bsUpdateSP(){
   var total=BSK.reduce(function(s,k){return s+dexSP[k]},0),remain=SP_MAX-total;
   var el=document.getElementById('dspRemainNum');if(el){el.textContent=remain;el.className='dsp-remain-num '+(remain<0?'over':remain<=5?'warn':'ok')}
-  BSK.forEach(function(k){var fill=document.getElementById('sf-'+k);var val=document.getElementById('sv-'+k);var range=document.getElementById('sr-'+k);if(fill)fill.style.width=(dexSP[k]/32*100)+'%';if(val&&document.activeElement!==val)val.value=dexSP[k];if(range&&document.activeElement!==range)range.value=dexSP[k]});
+  BSK.forEach(function(k){var fill=document.getElementById('sf-'+k);var val=document.getElementById('sv-'+k);var range=document.getElementById('sr-'+k);if(fill)fill.style.width=(dexSP[k]/32*100)+'%';if(range)range.value=dexSP[k];if(val&&document.activeElement!==val)val.value=dexSP[k]});
 }
 function bsRefresh(){bsUpdateBars();bsUpdateHex();bsUpdateBST();bsUpdateSP()}
-function dspSlide(key,val){dexSP[key]=Math.max(0,Math.min(32,parseInt(val)||0));bsRefresh()}
-function dspSet(key,val){dexSP[key]=Math.max(0,Math.min(32,parseInt(val)||0));bsRefresh()}
+function dspSet(key,val){
+  var requested=Math.max(0,Math.min(32,parseInt(val)||0));
+  var other=BSK.reduce(function(s,k){return s+(k===key?0:dexSP[k])},0);
+  var maxAllowed=Math.max(0,SP_MAX-other);
+  dexSP[key]=Math.min(requested,maxAllowed);
+  bsRefresh();
+}
+function dspSlide(key,val){dspSet(key,val)}
 function dspAdj(key,delta){dspSet(key,dexSP[key]+delta)}
 function bsNatureChange(val){
   if(!val)dexNature=null;else{var n=allNatures.find(function(x){return x.id===val});dexNature=n&&n.increased_stat?n:null}
@@ -613,6 +619,165 @@ var allNatures=[];
 async function loadNatures(){try{allNatures=await q('natures',{order:'name.asc'});renderNatures()}catch(e){}}
 function renderNatures(){var sL={hp:'HP',attack:'Attack',defense:'Defense',sp_attack:'Sp.Atk',sp_defense:'Sp.Def',speed:'Speed'};document.getElementById('natGrid').innerHTML=allNatures.map(function(n){var d=n.increased_stat?'<span class="nat-up">▲ '+sL[n.increased_stat]+'</span> <span class="nat-down">▼ '+sL[n.decreased_stat]+'</span>':'<span class="nat-neutral">Neutral</span>';return'<div class="nat-card"><div class="nat-name">'+n.name+'</div><div class="nat-stat">'+d+'</div></div>'}).join('')}
 
+// ═══════════════════════════════════════
+// PURE STAT CALC HELPERS (shared by dex detail + build editor)
+// ═══════════════════════════════════════
+function bsCalcStatFor(key,base,spVal,nature){
+  var m=1;
+  if(nature){
+    if(BSNATMAP[nature.increased_stat]===key)m=1.1;
+    if(BSNATMAP[nature.decreased_stat]===key)m=0.9;
+  }
+  if(key==='hp')return Math.floor((2*base+31)*50/100)+60+spVal;
+  return Math.floor((Math.floor((2*base+31)*50/100)+5)*m)+spVal;
+}
+function bsGetCalcStatsFor(poke,sp,nature){
+  if(!poke)return BSK.map(function(k){return{key:k,base:0,sp:0,calc:0,natMod:1}});
+  return BSK.map(function(k){
+    var base=poke[BSDB[k]]||0,spVal=sp[k]||0,m=1;
+    if(nature){
+      if(BSNATMAP[nature.increased_stat]===k)m=1.1;
+      if(BSNATMAP[nature.decreased_stat]===k)m=0.9;
+    }
+    return{key:k,base:base,sp:spVal,calc:bsCalcStatFor(k,base,spVal,nature),natMod:m};
+  });
+}
+
+// ═══════════════════════════════════════
+// BUILD EDITOR STAT PREVIEW (bars + hex + SP sliders)
+// DOM IDs prefixed ed-* to avoid clash with dex detail panel
+// ═══════════════════════════════════════
+var edView='bars';
+
+function edGetPoke(){return allPkmn.find(function(x){return x.id===selPkmnId})}
+function edGetNature(){
+  var sel=document.getElementById('edNat');
+  if(!sel||!sel.value)return null;
+  var n=allNatures.find(function(x){return x.id===sel.value});
+  return n&&n.increased_stat?n:null;
+}
+
+function edBuildBars(){
+  return '<div class="bs-grid">'+BSK.map(function(k){
+    return '<div class="bs-row"><span class="bs-label">'+BSN[k]+'</span><div class="bs-track"><div class="bs-fill" id="ed-bf-'+k+'" style="background:'+BSC[k]+'"></div></div><span class="bs-val" style="color:'+BSC[k]+'" id="ed-bv-'+k+'">0</span><span class="bs-nat-ind" id="ed-bi-'+k+'"></span></div>';
+  }).join('')+'</div>';
+}
+function edUpdateBars(stats){
+  stats.forEach(function(st){
+    var f=document.getElementById('ed-bf-'+st.key),v=document.getElementById('ed-bv-'+st.key),i=document.getElementById('ed-bi-'+st.key);
+    if(f)f.style.width=Math.min(st.calc/300*100,100)+'%';
+    if(v)v.textContent=st.calc;
+    if(i)i.innerHTML=st.natMod>1?'<span style="color:var(--green)">▲</span>':st.natMod<1?'<span style="color:var(--red)">▼</span>':'';
+  });
+}
+
+function edBuildHex(poke){
+  var typeCol=(TC[poke.type_1]||TC.Normal).m;
+  var cx=180,cy=175,r=78,angles=[-90,-30,30,90,150,210],order=[0,1,2,5,4,3];
+  function polar(a,rd){var d=a*Math.PI/180;return{x:cx+rd*Math.cos(d),y:cy+rd*Math.sin(d)}}
+  var outerPts=angles.map(function(a){var p=polar(a,r);return p.x+','+p.y}).join(' ');
+  var g75=angles.map(function(a){var p=polar(a,r*.75);return p.x+','+p.y}).join(' ');
+  var g50=angles.map(function(a){var p=polar(a,r*.5);return p.x+','+p.y}).join(' ');
+  var g25=angles.map(function(a){var p=polar(a,r*.25);return p.x+','+p.y}).join(' ');
+  var spokes=angles.map(function(a){var p=polar(a,r);return'<line x1="'+cx+'" y1="'+cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="var(--border)" stroke-width="1"/>'}).join('');
+  var labels='';
+  for(var i=0;i<6;i++){
+    var si=order[i],k=BSK[si],pt=polar(angles[i],r+26);
+    var anchor='middle';if(angles[i]===-30||angles[i]===30)anchor='start';if(angles[i]===150||angles[i]===210)anchor='end';
+    var isTop=angles[i]===-90,isBot=angles[i]===90;
+    if(isTop){labels+='<text x="'+pt.x+'" y="'+(pt.y-10)+'" text-anchor="middle" fill="'+BSC[k]+'" font-size="11" font-weight="700" font-family="Plus Jakarta Sans,sans-serif">'+BSN[k]+'</text><text x="'+pt.x+'" y="'+(pt.y+5)+'" text-anchor="middle" id="ed-hv-'+k+'" fill="'+BSC[k]+'" font-size="14" font-weight="800" font-family="Plus Jakarta Sans,sans-serif" style="font-variant-numeric:tabular-nums">0</text>'}
+    else if(isBot){labels+='<text x="'+pt.x+'" y="'+(pt.y+4)+'" text-anchor="middle" id="ed-hv-'+k+'" fill="'+BSC[k]+'" font-size="14" font-weight="800" font-family="Plus Jakarta Sans,sans-serif" style="font-variant-numeric:tabular-nums">0</text><text x="'+pt.x+'" y="'+(pt.y+18)+'" text-anchor="middle" fill="'+BSC[k]+'" font-size="11" font-weight="700" font-family="Plus Jakarta Sans,sans-serif">'+BSN[k]+'</text>'}
+    else{labels+='<text x="'+pt.x+'" y="'+(pt.y-4)+'" text-anchor="'+anchor+'" fill="'+BSC[k]+'" font-size="11" font-weight="700" font-family="Plus Jakarta Sans,sans-serif">'+BSN[k]+'</text><text x="'+pt.x+'" y="'+(pt.y+12)+'" text-anchor="'+anchor+'" id="ed-hv-'+k+'" fill="'+BSC[k]+'" font-size="14" font-weight="800" font-family="Plus Jakarta Sans,sans-serif" style="font-variant-numeric:tabular-nums">0</text>'}
+  }
+  return '<div class="bs-hex-wrap"><svg class="bs-hex-svg" viewBox="0 0 360 360"><polygon points="'+outerPts+'" fill="none" stroke="var(--border)" stroke-width="1.5"/><polygon points="'+g75+'" fill="none" stroke="var(--border)" stroke-width=".5" opacity=".35"/><polygon points="'+g50+'" fill="none" stroke="var(--border)" stroke-width=".5" opacity=".35"/><polygon points="'+g25+'" fill="none" stroke="var(--border)" stroke-width=".5" opacity=".35"/>'+spokes+'<polygon id="ed-hexPoly" points="'+cx+','+cy+'" fill="'+typeCol+'25" stroke="'+typeCol+'" stroke-width="2.5" stroke-linejoin="round" style="transition:all .3s ease"/>'+labels+'</svg></div>';
+}
+function edUpdateHex(stats){
+  var cx=180,cy=175,r=78,angles=[-90,-30,30,90,150,210],order=[0,1,2,5,4,3];
+  function polar(a,rd){var d=a*Math.PI/180;return{x:cx+rd*Math.cos(d),y:cy+rd*Math.sin(d)}}
+  var pts=[];for(var i=0;i<6;i++){var si=order[i];var pct=Math.min(stats[si].calc/300,1);var pt=polar(angles[i],r*Math.max(pct,0.05));pts.push(pt.x+','+pt.y)}
+  var poly=document.getElementById('ed-hexPoly');if(poly)poly.setAttribute('points',pts.join(' '));
+  for(var i=0;i<6;i++){var si=order[i],st=stats[si],el=document.getElementById('ed-hv-'+st.key);if(el){el.textContent=st.calc+(st.natMod>1?' ▲':st.natMod<1?' ▼':'');el.style.fill=st.natMod>1?'var(--green)':st.natMod<1?'var(--red)':BSC[st.key]}}
+}
+
+function edBuildSP(){
+  var rows=BSK.map(function(k){
+    var col=BSC[k];
+    return '<div class="dsp-row">'+
+      '<span class="dsp-name" style="color:'+col+'">'+BSN[k]+'</span>'+
+      '<button class="dsp-pm" onpointerdown="edAdj(\''+k+'\',-1)">−</button>'+
+      '<div class="dsp-slider-wrap">'+
+        '<div class="dsp-slider-track"><div class="dsp-slider-fill" id="ed-sf-'+k+'" style="background:'+col+'"></div></div>'+
+        '<input type="range" class="dsp-slider" id="ed-sr-'+k+'" min="0" max="32" value="'+spV[k]+'" style="--thumb-col:'+col+'" oninput="edSlide(\''+k+'\',this.value)">'+
+      '</div>'+
+      '<button class="dsp-pm" onpointerdown="edAdj(\''+k+'\',1)">+</button>'+
+      '<input class="dsp-val-box" id="ed-sv-'+k+'" type="number" min="0" max="32" value="'+spV[k]+'" style="color:'+col+'" onchange="edSet(\''+k+'\',this.value)">'+
+    '</div>';
+  }).join('');
+  return '<div class="dsp-section"><div class="dsp-header"><span class="dsp-title">SP Allocation</span><div class="dsp-remain-wrap"><div class="dsp-remain-num ok" id="ed-remainNum">'+SP_MAX+'</div><div class="dsp-remain-label">remaining of '+SP_MAX+'</div></div></div><div class="dsp-grid">'+rows+'</div></div>';
+}
+function edUpdateSP(){
+  var total=BSK.reduce(function(s,k){return s+spV[k]},0),remain=SP_MAX-total;
+  var el=document.getElementById('ed-remainNum');if(el){el.textContent=remain;el.className='dsp-remain-num '+(remain<0?'over':remain<=5?'warn':'ok')}
+  BSK.forEach(function(k){
+    var fill=document.getElementById('ed-sf-'+k),val=document.getElementById('ed-sv-'+k),range=document.getElementById('ed-sr-'+k);
+    if(fill)fill.style.width=(spV[k]/32*100)+'%';
+    if(range)range.value=spV[k];
+    if(val&&document.activeElement!==val)val.value=spV[k];
+  });
+}
+function edUpdateBST(stats){
+  var total=stats.reduce(function(s,st){return s+st.calc},0);
+  var cls=total>=600?'bst-elite':total>=500?'bst-high':total>=400?'bst-mid':'bst-low';
+  var el=document.getElementById('ed-bstVal');if(el){el.textContent=total;el.className='bs-total-val '+cls}
+}
+
+function edRefresh(){
+  var p=edGetPoke();
+  if(!p)return;
+  var nature=edGetNature();
+  var stats=bsGetCalcStatsFor(p,spV,nature);
+  edUpdateBars(stats);
+  edUpdateHex(stats);
+  edUpdateBST(stats);
+  edUpdateSP();
+}
+
+function edSwitchView(view){
+  edView=view;
+  document.querySelectorAll('#statSection .bs-view-btn').forEach(function(b){b.classList.toggle('active',b.dataset.view===view)});
+  var b=document.getElementById('ed-barsView'),h=document.getElementById('ed-hexView');
+  if(b)b.classList.toggle('active',view==='bars');
+  if(h)h.classList.toggle('active',view==='hex');
+  edRefresh();
+}
+
+// SP controls (respects 66-cap)
+function edSet(key,val){
+  var requested=Math.max(0,Math.min(32,parseInt(val)||0));
+  var other=BSK.reduce(function(s,k){return s+(k===key?0:spV[k])},0);
+  var maxAllowed=Math.max(0,SP_MAX-other);
+  spV[key]=Math.min(requested,maxAllowed);
+  edRefresh();
+}
+function edSlide(key,val){edSet(key,val)}
+function edAdj(key,delta){edSet(key,spV[key]+delta)}
+
+// Render the full stat section (called from renderBuildEditor and pickPk)
+function edBuildStatSection(){
+  var p=edGetPoke();
+  if(!p)return '<div style="color:var(--muted);font-size:.82rem;padding:.5rem 0">Select a Pokémon to configure stats</div>';
+  var t1=(TC[p.type_1]||TC.Normal).m,t2=p.type_2?(TC[p.type_2]||TC.Normal).m:null;
+  var html='';
+  html+='<div style="display:flex;align-items:center;gap:.65rem;padding:.6rem .7rem;background:var(--surface);border-radius:10px;margin-bottom:.8rem"><img src="'+(p.image_url||'')+'" onerror="this.style.opacity=0.2" style="width:42px;height:42px;object-fit:contain"><div><div style="font-weight:800;font-size:.88rem">'+p.name+'</div><div style="display:flex;gap:4px;margin-top:2px"><span class="type-pill" style="background:'+t1+'">'+p.type_1+'</span>'+(p.type_2?'<span class="type-pill" style="background:'+t2+'">'+p.type_2+'</span>':'')+'</div></div></div>';
+  html+='<div class="bs-view-toggle"><button class="bs-view-btn'+(edView==='bars'?' active':'')+'" data-view="bars" onclick="edSwitchView(\'bars\')">Bars</button><button class="bs-view-btn'+(edView==='hex'?' active':'')+'" data-view="hex" onclick="edSwitchView(\'hex\')">Hex</button></div>';
+  html+='<div class="bs-view'+(edView==='bars'?' active':'')+'" id="ed-barsView">'+edBuildBars()+'</div>';
+  html+='<div class="bs-view'+(edView==='hex'?' active':'')+'" id="ed-hexView">'+edBuildHex(p)+'</div>';
+  html+='<div class="bs-total"><span class="bs-total-label">Lv50 Stat Total</span><span class="bs-total-val" id="ed-bstVal">0</span></div>';
+  html+=edBuildSP();
+  html+='<div class="bs-formula">Lv50 · IVs max (31) · <code>1 SP = +1 stat</code></div>';
+  return html;
+}
+
 // #SECTION: BUILDS
 // ═══════════════════════════════════════
 // BUILDS
@@ -671,23 +836,25 @@ function renderBuildEditor(c){
   var isEdShiny=b&&b.is_shiny;
   var pkSearch='<label class="ed-label">Pokémon</label><input class="ed-input" id="pkSrch" placeholder="Search Pokémon..." oninput="filterPkPicker()"><div style="display:flex;gap:3px;flex-wrap:wrap;margin:.4rem 0"><span class="flabel">Type</span><select class="ed-select" id="pkTypeF" onchange="filterPkPicker()" style="width:auto;padding:2px 6px;font-size:.7rem"><option value="">All Types</option>'+Object.keys(TC).sort().map(function(t){return'<option value="'+t+'">'+t+'</option>'}).join('')+'</select><span class="flabel" style="margin-left:.3rem">Form</span><select class="ed-select" id="pkFormF" onchange="filterPkPicker()" style="width:auto;padding:2px 6px;font-size:.7rem"><option value="">All Forms</option><option>Base</option><option>Mega</option><option>Regional</option></select></div>';
   var pkGrid='<div class="pk-picker" id="pkPicker">'+allPkmn.slice(0,100).map(function(p){var sel=p.id===selPkmnId?'selected':'';var pImg=isEdShiny&&p.shiny_url?p.shiny_url:(p.image_url||'');return'<div class="pk-pick '+sel+'" onclick="pickPk(\''+p.id+'\')"><img src="'+pImg+'" onerror="this.style.opacity=\'0.2\'"><span>'+p.name+'</span></div>'}).join('')+'</div>';
-  // Stat sliders
-  var STAT_CAP=32;var sliders=Object.keys(spV).map(function(s){return'<div class="sp-row"><span class="sp-name">'+statNames[s]+'</span><input type="range" class="sp-slider" min="0" max="'+STAT_CAP+'" value="'+spV[s]+'" oninput="setSp(\''+s+'\',this.value)" style="accent-color:'+statCols[s]+'"><button class="sp-pm" onclick="adjSp(\''+s+'\',-1)">−</button><input class="sp-val" id="spv_'+s+'" type="number" min="0" max="32" value="'+spV[s]+'" onchange="setSp(\''+s+'\',this.value)"><button class="sp-pm" onclick="adjSp(\''+s+'\',1)">+</button></div>'}).join('');
+  // Stat calculator section (bars/hex + SP sliders + BST total)
+  var statSectionHtml=edBuildStatSection();
   c.innerHTML=hdr+'<div class="editor"><div class="ed-grid"><div>'+
     '<div class="ed-card"><h3>Pokémon & Info</h3>'+pkSearch+pkGrid+
     '<label class="ed-label">Build Name</label><input class="ed-input" id="edName" value="'+(b?b.build_name:'')+'" placeholder="e.g. Sweeper Dragonite">'+
     '<div class="ed-row"><div><label class="ed-label">Format</label><select class="ed-select" id="edFmt"><option value="Singles"'+(b&&b.battle_format==='Singles'?' selected':'')+'>Singles</option><option value="Doubles"'+(b&&b.battle_format==='Doubles'?' selected':'')+'>Doubles</option></select></div><div><label class="ed-label">Archetype</label><input class="ed-input" id="edArch" list="archList" value="'+(b?b.archetype||'':'')+'" placeholder="Select or type custom..."><datalist id="archList"><option value="Setup Sweeper"><option value="Sweeper"><option value="Wallbreaker"><option value="Wall Breaker"><option value="Tank"><option value="Support"><option value="Pivot"><option value="Utility"><option value="Disruption"><option value="Stall"><option value="Glass Cannon"><option value="Special Breaker"><option value="Physical Breaker"><option value="Bulky Attacker"><option value="Lead"><option value="Revenge Killer"></datalist></div></div>'+
     '<label class="ed-label" style="margin-top:.6rem">Shiny Variant</label><div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem"><button type="button" class="fpill'+(b&&b.is_shiny?' active':'')+'" id="edShiny" onclick="var el=this;el.classList.toggle(\'active\')" style="cursor:pointer">✦ Using Shiny</button><span style="font-size:.72rem;color:var(--muted)">Toggle if this build uses the shiny artwork</span></div>'+
     '</div></div><div>'+
-    '<div class="ed-card"><h3>Stat Allocation</h3><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem"><span style="font-size:.78rem;color:var(--muted)">Distribute up to '+SP_MAX+' points</span><div><span style="font-size:.65rem;color:var(--muted)">REMAINING</span><div class="sp-remain'+(remain<0?' sp-over':'')+'" id="spRemain">'+remain+'</div></div></div>'+sliders+'</div>'+
+    '<div class="ed-card"><h3>Stat Allocation</h3><div id="statSection">'+statSectionHtml+'</div></div>'+
     '<div class="ed-card" style="margin-top:1rem"><h3>Moves & Ability</h3>'+
     '<div class="ed-row"><div><label class="ed-label">Ability</label><input class="ed-input" id="edAbi" value="'+(b?b.ability||'':'')+'" placeholder="e.g. Multiscale"></div><div><label class="ed-label">Item</label><select class="ed-select" id="edItem"><option value="">— None —</option>'+allItems.map(function(i){var sel=b&&b.item_name===i.name?' selected':'';return'<option value="'+i.id+'"'+sel+'>'+i.name+'</option>'}).join('')+'</select></div></div>'+
-    '<div class="ed-row"><div><label class="ed-label">Nature</label><select class="ed-select" id="edNat"><option value="">— None —</option>'+allNatures.map(function(n){var sl={hp:'HP',attack:'Atk',defense:'Def',sp_attack:'SpA',sp_defense:'SpD',speed:'Spe'};var hint=n.increased_stat?' (+'+sl[n.increased_stat]+' -'+sl[n.decreased_stat]+')':' (Neutral)';var sel=b&&b.nature_name===n.name?' selected':'';return'<option value="'+n.id+'"'+sel+'>'+n.name+hint+'</option>'}).join('')+'</select></div></div>'+
+    '<div class="ed-row"><div><label class="ed-label">Nature</label><select class="ed-select" id="edNat" onchange="edRefresh()"><option value="">— None —</option>'+allNatures.map(function(n){var sl={hp:'HP',attack:'Atk',defense:'Def',sp_attack:'SpA',sp_defense:'SpD',speed:'Spe'};var hint=n.increased_stat?' (+'+sl[n.increased_stat]+' -'+sl[n.decreased_stat]+')':' (Neutral)';var sel=b&&b.nature_name===n.name?' selected':'';return'<option value="'+n.id+'"'+sel+'>'+n.name+hint+'</option>'}).join('')+'</select></div></div>'+
     '<div class="ed-row"><div><label class="ed-label">Move 1</label><input class="ed-input" id="edM1" value="'+(b?b.move_1||'':'')+'"></div><div><label class="ed-label">Move 2</label><input class="ed-input" id="edM2" value="'+(b?b.move_2||'':'')+'"></div></div>'+
     '<div class="ed-row"><div><label class="ed-label">Move 3</label><input class="ed-input" id="edM3" value="'+(b?b.move_3||'':'')+'"></div><div><label class="ed-label">Move 4</label><input class="ed-input" id="edM4" value="'+(b?b.move_4||'':'')+'"></div></div>'+
     '</div></div></div>'+
     '<div class="ed-card" style="margin-top:1rem"><h3>Strategy</h3><div class="ed-row"><div><label class="ed-label">Win Condition</label><textarea class="ed-textarea" id="edWin">'+(b?b.win_condition||'':'')+'</textarea></div></div><div class="ed-row"><div><label class="ed-label">Strengths</label><textarea class="ed-textarea" id="edStr">'+(b?b.strengths||'':'')+'</textarea></div><div><label class="ed-label">Weaknesses</label><textarea class="ed-textarea" id="edWeak">'+(b?b.weaknesses||'':'')+'</textarea></div></div></div>'+
-    '</div>'
+    '</div>';
+  // Paint bars/hex after DOM is attached
+  requestAnimationFrame(function(){requestAnimationFrame(edRefresh)});
 }
 
 // #SECTION: MATCHUP & COVERAGE HELPERS
@@ -763,10 +930,16 @@ function renderBuildDetail(c){
 
 // Keep the editor picker lightweight by combining search/form filters and only rendering the first 100 matches.
 function filterPkPicker(){var s=document.getElementById('pkSrch').value.toLowerCase();var tf=document.getElementById('pkTypeF')?document.getElementById('pkTypeF').value:'';var ff=document.getElementById('pkFormF')?document.getElementById('pkFormF').value:'';var isShinyEd=document.getElementById('edShiny')&&document.getElementById('edShiny').classList.contains('active');var f=allPkmn.filter(function(p){if(s&&p.name.toLowerCase().indexOf(s)===-1&&String(p.dex_number).indexOf(s)===-1)return false;if(tf&&p.type_1!==tf&&p.type_2!==tf)return false;if(ff&&p.form!==ff)return false;return true}).slice(0,100);document.getElementById('pkPicker').innerHTML=f.map(function(p){var sel=p.id===selPkmnId?'selected':'';var pImg=isShinyEd&&p.shiny_url?p.shiny_url:(p.image_url||'');return'<div class="pk-pick '+sel+'" onclick="pickPk(\''+p.id+'\')"><img src="'+pImg+'" onerror="this.style.opacity=\'0.2\'"><span>'+p.name+'</span></div>'}).join('')}
-function pickPk(id){selPkmnId=id;filterPkPicker()}
+function pickPk(id){
+  selPkmnId=id;
+  filterPkPicker();
+  var sec=document.getElementById('statSection');
+  if(sec){sec.innerHTML=edBuildStatSection();requestAnimationFrame(function(){requestAnimationFrame(edRefresh)})}
+}
 // Clamp per-stat values and enforce the shared SP budget before syncing the slider + number input.
-function setSp(s,v){v=parseInt(v)||0;if(v<0)v=0;if(v>32)v=32;var others=Object.keys(spV).filter(function(k){return k!==s}).reduce(function(a,k){return a+spV[k]},0);if(v+others>SP_MAX)v=SP_MAX-others;if(v<0)v=0;if(v>32)v=32;spV[s]=v;var inp=document.getElementById('spv_'+s);if(inp)inp.value=v;var sl=document.querySelector('input[type="range"][oninput*="\''+s+'\'"]');if(sl)sl.value=v;var total=Object.values(spV).reduce(function(a,x){return a+x},0);var rem=SP_MAX-total;var el=document.getElementById('spRemain');el.textContent=rem;el.className='sp-remain'+(rem<0?' sp-over':'')}
-function adjSp(s,d){setSp(s,spV[s]+d);var sl=document.querySelector('input[oninput*="'+s+'"]');if(sl)sl.value=spV[s]}
+// Legacy setSp/adjSp kept for backward compat (no-ops that route to edSet)
+function setSp(s,v){edSet(s,v)}
+function adjSp(s,d){edAdj(s,d)}
 
 async function saveBuild(){
   if(!selPkmnId){toast('Select a Pokémon','err');return}
@@ -776,9 +949,26 @@ async function saveBuild(){
   var body={user_id:usr.id,pokemon_id:selPkmnId,name:name,battle_format:document.getElementById('edFmt').value,archetype:document.getElementById('edArch').value||null,item_id:document.getElementById('edItem').value||null,nature_id:document.getElementById('edNat').value||null,ability:document.getElementById('edAbi').value||null,move_1:document.getElementById('edM1').value||null,move_2:document.getElementById('edM2').value||null,move_3:document.getElementById('edM3').value||null,move_4:document.getElementById('edM4').value||null,hp_sp:spV.hp,atk_sp:spV.atk,def_sp:spV.def,spa_sp:spV.spa,spd_sp:spV.spd,spe_sp:spV.spe,is_shiny:isShiny,win_condition:document.getElementById('edWin').value||null,strengths:document.getElementById('edStr').value||null,weaknesses:document.getElementById('edWeak').value||null,status:'Testing'};
   try{if(editBuildId){await upd('builds',{'id':'eq.'+editBuildId},body,true);toast('Build updated!')}else{await ins('builds',body,true);toast('Build created!')}await loadBuilds();showBuildList()}catch(e){toast(e.message,'err')}
 }
-function confirmDelBuild(id,name){document.getElementById('cmEmoji').textContent='⚔️';document.getElementById('cmTitle').textContent='Delete Build?';document.getElementById('cmMsg').textContent='Delete "'+name+'"? This cannot be undone.';document.getElementById('cmBtn').onclick=function(){delBuild(id)};document.getElementById('confirmMod').classList.add('open')}
+// Reset the shared confirmMod to its default delete-style state.
+// Called before opening as a delete confirmation so stale login-modal text doesn't leak through.
+function resetConfirmMod(){
+  var btn=document.getElementById('cmBtn');
+  btn.textContent='Delete';
+  btn.className='btn btn-red';
+  btn.onclick=null;
+  var cancel=document.querySelector('#confirmMod .btn.btn-ghost');
+  if(cancel)cancel.textContent='Cancel';
+}
+function confirmDelBuild(id,name){
+  resetConfirmMod();
+  document.getElementById('cmEmoji').textContent='⚔️';
+  document.getElementById('cmTitle').textContent='Delete Build?';
+  document.getElementById('cmMsg').textContent='Delete "'+name+'"? This cannot be undone.';
+  document.getElementById('cmBtn').onclick=function(){delBuild(id)};
+  document.getElementById('confirmMod').classList.add('open');
+}
 async function delBuild(id){try{await rm('builds',{'id':'eq.'+id},true);closeCm();toast('Build deleted');await loadBuilds();renderBuilds();renderDash()}catch(e){toast(e.message,'err')}}
-function closeCm(){authMode='login';document.getElementById('confirmMod').classList.remove('open')}
+function closeCm(){authMode='login';document.getElementById('confirmMod').classList.remove('open');resetConfirmMod()}
 function showLoginModal(msg){
   var isSignup=authMode==='signup';
   document.getElementById('cmEmoji').textContent=isSignup?'✨':'🔐';
@@ -918,7 +1108,14 @@ async function saveTeam(){
   for(var i=0;i<selBuildIds.length;i++){await ins('team_builds',{team_id:tid,build_id:selBuildIds[i],slot_position:i+1},true)}
   toast(editTeamId?'Team updated!':'Team created!');await loadTeamRoster();showTeamList();renderDash()}catch(e){toast(e.message,'err')}
 }
-function confirmDelTeam(id,name){document.getElementById('cmEmoji').textContent='🏆';document.getElementById('cmTitle').textContent='Delete Team?';document.getElementById('cmMsg').textContent='Delete "'+name+'"? This cannot be undone.';document.getElementById('cmBtn').onclick=function(){delTeam(id)};document.getElementById('confirmMod').classList.add('open')}
+function confirmDelTeam(id,name){
+  resetConfirmMod();
+  document.getElementById('cmEmoji').textContent='🏆';
+  document.getElementById('cmTitle').textContent='Delete Team?';
+  document.getElementById('cmMsg').textContent='Delete "'+name+'"? This cannot be undone.';
+  document.getElementById('cmBtn').onclick=function(){delTeam(id)};
+  document.getElementById('confirmMod').classList.add('open');
+}
 async function delTeam(id){try{await rm('teams',{'id':'eq.'+id},true);closeCm();toast('Team deleted');await loadTeamRoster();renderTeams();renderDash()}catch(e){toast(e.message,'err')}}
 
 // #SECTION: PROFILE & ACHIEVEMENTS
