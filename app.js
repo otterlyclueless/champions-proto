@@ -6,7 +6,7 @@
 // ═══════════════════════════════════════
 
 var API='https://hrxqhhjkhhlpafhfarbl.supabase.co',ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhyeHFoaGpraGhscGFmaGZhcmJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMDAzNjYsImV4cCI6MjA5MTY3NjM2Nn0.AALRUAOd3WVj1vmu42RvDV-RGHCpa8ymplkXsx_NSW0';
-var tk=null,usr=null,allPkmn=[],allBuilds=[],allTeams=[],uDex={},uShinyDex={},activeType=null,activeForm=null,showShiny=false,obtFilter='all',shinyCards={};
+var tk=null,refreshTk=null,sessionExp=0,usr=null,allPkmn=[],allBuilds=[],allTeams=[],uDex={},uShinyDex={},activeType=null,activeForm=null,showShiny=false,obtFilter='all',shinyCards={},authMode='login';
 
 // #SECTION: POKÉMON TYPE CONSTANTS & MATCHUP DATA
 // ═══════════════════════════════════════
@@ -27,7 +27,80 @@ var TCHART={Normal:{Rock:.5,Ghost:0,Steel:.5},Fire:{Fire:.5,Water:.5,Grass:2,Ice
 // ═══════════════════════════════════════
 
 function pb(s){return'<svg width="'+s+'" height="'+s+'" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="#EF4444"/><path d="M5 50A45 45 0 0 0 95 50Z" fill="white"/><circle cx="50" cy="50" r="45" fill="none" stroke="#1E293B" stroke-width="4"/><line x1="5" y1="50" x2="95" y2="50" stroke="#1E293B" stroke-width="4"/><circle cx="50" cy="50" r="12" fill="white" stroke="#1E293B" stroke-width="4"/><circle cx="50" cy="50" r="5" fill="#1E293B"/></svg>'}
-function toast(m,t){var e=document.createElement('div');e.className='toast toast-'+(t||'ok');e.textContent=m;document.getElementById('toasts').appendChild(e);setTimeout(function(){e.remove()},3500)}
+function toast(m,t){
+  var host=document.getElementById('toasts');
+  if(!host)return;
+
+  var kind=t||'ok';
+  var icon=kind==='err'?'⚠️':kind==='info'?'ℹ️':'✅';
+  var card=document.createElement('div');
+  card.className='toast toast-'+kind;
+  card.setAttribute('role','status');
+  card.setAttribute('aria-live','polite');
+  card.style.display='flex';
+  card.style.alignItems='flex-start';
+  card.style.gap='.65rem';
+  card.style.padding='.75rem .85rem';
+  card.style.borderRadius='12px';
+  card.style.maxWidth='340px';
+  card.style.lineHeight='1.35';
+
+  var iconEl=document.createElement('div');
+  iconEl.textContent=icon;
+  iconEl.style.fontSize='1rem';
+  iconEl.style.lineHeight='1';
+  iconEl.style.marginTop='.05rem';
+  iconEl.style.flexShrink='0';
+
+  var msgEl=document.createElement('div');
+  msgEl.textContent=m;
+  msgEl.style.flex='1';
+  msgEl.style.fontSize='.82rem';
+  msgEl.style.fontWeight='700';
+
+  var closeBtn=document.createElement('button');
+  closeBtn.type='button';
+  closeBtn.innerHTML='✕';
+  closeBtn.setAttribute('aria-label','Dismiss notification');
+  closeBtn.style.border='none';
+  closeBtn.style.background='transparent';
+  closeBtn.style.color='inherit';
+  closeBtn.style.cursor='pointer';
+  closeBtn.style.opacity='.7';
+  closeBtn.style.fontSize='.78rem';
+  closeBtn.style.lineHeight='1';
+  closeBtn.style.padding='0';
+  closeBtn.style.marginTop='.1rem';
+  closeBtn.style.flexShrink='0';
+
+  closeBtn.onmouseenter=function(){closeBtn.style.opacity='1'};
+  closeBtn.onmouseleave=function(){closeBtn.style.opacity='.7'};
+
+  var removed=false;
+  function dismiss(){
+    if(removed)return;
+    removed=true;
+    card.style.transition='opacity .18s ease, transform .18s ease';
+    card.style.opacity='0';
+    card.style.transform='translateY(-4px)';
+    setTimeout(function(){if(card.parentNode)card.parentNode.removeChild(card)},180);
+  }
+
+  closeBtn.onclick=dismiss;
+
+  card.appendChild(iconEl);
+  card.appendChild(msgEl);
+  card.appendChild(closeBtn);
+  host.appendChild(card);
+
+  while(host.children.length>4){
+    host.removeChild(host.children[0]);
+  }
+
+  var timer=setTimeout(dismiss,4200);
+  card.onmouseenter=function(){clearTimeout(timer)};
+  card.onmouseleave=function(){timer=setTimeout(dismiss,2200)};
+}
 function h(a){return{'apikey':ANON,'Content-Type':'application/json','Authorization':'Bearer '+(a&&tk?tk:ANON)}}
 
 // #SECTION: DEV SESSION PERSISTENCE
@@ -40,7 +113,7 @@ function h(a){return{'apikey':ANON,'Content-Type':'application/json','Authorizat
 
 function saveSession(){
   try{
-    if(tk&&usr){localStorage.setItem('champions_session',JSON.stringify({tk:tk,usr:usr}))}
+    if(tk&&refreshTk&&usr){localStorage.setItem('champions_session',JSON.stringify({tk:tk,refreshTk:refreshTk,sessionExp:sessionExp,usr:usr}))}
     else{localStorage.removeItem('champions_session')}
   }catch(e){}
 }
@@ -55,17 +128,103 @@ function restoreSession(){
     var raw=localStorage.getItem('champions_session');
     if(!raw)return false;
     var s=JSON.parse(raw);
-    if(!s||!s.tk||!s.usr)return false;
-    tk=s.tk;usr=s.usr;
+    if(!s||!s.tk||!s.refreshTk||!s.usr)return false;
+    tk=s.tk;
+    refreshTk=s.refreshTk;
+    sessionExp=s.sessionExp||0;
+    usr=s.usr;
     return true;
   }catch(e){
     localStorage.removeItem('champions_session');
     return false;
   }
 }
-async function q(t,p,a){var u=new URL(API+'/rest/v1/'+t);if(p)Object.entries(p).forEach(function(e){u.searchParams.set(e[0],e[1])});var r=await fetch(u.toString(),{headers:h(a)});if(!r.ok)throw new Error(t+': '+r.status);return r.json()}
-async function ins(t,b,a){var r=await fetch(API+'/rest/v1/'+t,{method:'POST',headers:Object.assign(h(a),{'Prefer':'return=representation'}),body:JSON.stringify(b)});if(!r.ok){var e=await r.json().catch(function(){return{}});throw new Error(e.message||r.status)}return r.json()}
-async function rm(t,m,a){var u=new URL(API+'/rest/v1/'+t);Object.entries(m).forEach(function(e){u.searchParams.set(e[0],e[1])});var r=await fetch(u.toString(),{method:'DELETE',headers:h(a)});if(!r.ok)throw new Error(r.status)}
+function clearSessionState(){
+  tk=null;
+  refreshTk=null;
+  sessionExp=0;
+  usr=null;
+}
+
+function setSessionFromAuth(d){
+  tk=d.access_token||null;
+  refreshTk=d.refresh_token||refreshTk||null;
+  usr=d.user||usr||null;
+  sessionExp=Date.now()+Math.max(((d.expires_in||3600)-30)*1000,30000);
+  saveSession();
+}
+
+function sessionLooksExpired(){
+  return !tk||!sessionExp||Date.now()>=sessionExp;
+}
+
+async function refreshSession(){
+  if(!refreshTk)throw new Error('No refresh token available');
+  var r=await fetch(API+'/auth/v1/token?grant_type=refresh_token',{
+    method:'POST',
+    headers:{'apikey':ANON,'Content-Type':'application/json'},
+    body:JSON.stringify({refresh_token:refreshTk})
+  });
+  var d=await r.json().catch(function(){return{}});
+  if(!r.ok)throw new Error(d.error_description||d.msg||'Session refresh failed');
+  setSessionFromAuth(d);
+  return true;
+}
+
+async function ensureSession(){
+  if(!usr)return false;
+  if(!sessionLooksExpired())return true;
+  try{
+    await refreshSession();
+    return true;
+  }catch(e){
+    handleAuthExpired();
+    throw e;
+  }
+}
+
+function handleAuthExpired(){
+  clearSessionState();
+  saveSession();
+  updAuth();
+  renderDash();
+  renderDex();
+  renderItems();
+  renderBuilds();
+  renderTeams();
+  renderProfile();
+  updProfileNavIcon();
+  authMode='login';
+  showLoginModal('Your session expired. Please sign in again.');
+  toast('Session expired. Please sign in again.','err');
+}
+
+async function authFetch(url,options,needsAuth){
+  if(needsAuth)await ensureSession();
+  var opts=options||{};
+  opts.headers=opts.headers||{};
+  var res=await fetch(url,opts);
+
+  if(res.status===401&&needsAuth){
+    try{
+      await refreshSession();
+      opts.headers=Object.assign({},opts.headers,h(true));
+      res=await fetch(url,opts);
+    }catch(e){
+      handleAuthExpired();
+      throw e;
+    }
+    if(res.status===401){
+      handleAuthExpired();
+      throw new Error('Session expired');
+    }
+  }
+
+  return res;
+}
+async function q(t,p,a){var u=new URL(API+'/rest/v1/'+t);if(p)Object.entries(p).forEach(function(e){u.searchParams.set(e[0],e[1])});var r=await authFetch(u.toString(),{headers:h(a)},a);if(!r.ok)throw new Error(t+': '+r.status);return r.json()}
+async function ins(t,b,a){var r=await authFetch(API+'/rest/v1/'+t,{method:'POST',headers:Object.assign(h(a),{'Prefer':'return=representation'}),body:JSON.stringify(b)},a);if(!r.ok){var e=await r.json().catch(function(){return{}});throw new Error(e.message||r.status)}return r.json()}
+async function rm(t,m,a){var u=new URL(API+'/rest/v1/'+t);Object.entries(m).forEach(function(e){u.searchParams.set(e[0],e[1])});var r=await authFetch(u.toString(),{method:'DELETE',headers:h(a)},a);if(!r.ok)throw new Error(r.status)}
 
 // #SECTION: THEME
 // ═══════════════════════════════════════
@@ -122,15 +281,44 @@ async function login(){
     });
     var d=await r.json();
     if(!r.ok)throw new Error(d.error_description||d.msg||'Failed');
-    tk=d.access_token;usr=d.user;saveSession();updAuth();
+    setSessionFromAuth(d);updAuth();
     closeCm();
     await loadUser();
     renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();
     toast('Welcome back!');
   }catch(x){toast(x.message,'err')}
 }
+
+async function signup(){
+  var emailEl=document.getElementById('loginEmail')||document.getElementById('profileEmail')||document.getElementById('eIn');
+  var passEl=document.getElementById('loginPass')||document.getElementById('profilePass')||document.getElementById('pIn');
+  var e=emailEl?emailEl.value.trim():'';
+  var p=passEl?passEl.value:'';
+  if(!e||!p){toast('Enter your email and password','err');return}
+  try{
+    var r=await fetch(API+'/auth/v1/signup',{
+      method:'POST',
+      headers:{'apikey':ANON,'Content-Type':'application/json'},
+      body:JSON.stringify({email:e,password:p})
+    });
+    var d=await r.json().catch(function(){return{}});
+    if(!r.ok)throw new Error(d.error_description||d.msg||'Failed to sign up');
+    if(d.access_token&&d.user){
+      setSessionFromAuth(d);
+      updAuth();
+      closeCm();
+      await loadUser();
+      renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();
+      toast('Account created!');
+    }else{
+      authMode='login';
+      toast('Account created. Check your email to confirm, then sign in.');
+      showLoginModal('Account created. Check your email to confirm, then sign in.');
+    }
+  }catch(x){toast(x.message,'err')}
+}
 function logout(){
-  tk=null;usr=null;allBuilds=[];allTeams=[];uDex={};uShinyDex={};uItems={};userProfile=null;
+  clearSessionState();allBuilds=[];allTeams=[];uDex={};uShinyDex={};uItems={};userProfile=null;
   saveSession();
   updAuth();renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();updProfileNavIcon();
   toast('Signed out');
@@ -150,7 +338,7 @@ function updAuth(){
   if(usr){
     el.innerHTML='<div class="user-p"><div class="user-av">⚡</div><span style="overflow:hidden;text-overflow:ellipsis;flex:1;font-weight:500">'+usr.email+'</span></div><button class="ab ab-ghost" onclick="logout()" style="margin-top:3px">Sign Out</button>';
   }else{
-    el.innerHTML='<div class="auth-c"><input type="email" id="eIn" placeholder="Email"></div><div class="auth-c" style="margin-top:3px"><input type="password" id="pIn" placeholder="Password"><button class="ab ab-red" onclick="login()">Go</button></div>';
+    el.innerHTML='<div style="display:flex;flex-direction:column;gap:.35rem"><button class="ab ab-red" onclick="authMode=\'login\';showLoginModal()" style="width:100%">Sign In</button><button class="ab ab-ghost" onclick="authMode=\'signup\';showLoginModal()" style="width:100%">Sign Up</button></div>';
   }
   updProfileNavIcon();
 }
@@ -182,12 +370,18 @@ function renderDash(){
     '<div class="dash-stat"><div class="ds-label">Shiny Dex</div><div class="ds-val" style="color:var(--purple)">'+Object.keys(uShinyDex).length+'</div><div class="ds-wm">✦</div></div>';
   // Recent builds
   var rb=document.getElementById('recentBuilds');
+  var isMobile=window.innerWidth<=768;
 if(!usr){
-  rb.innerHTML='<div class="card" style="padding:1.3rem;text-align:center;max-width:420px"><div style="margin-bottom:.5rem;font-size:1.8rem">🔐</div><h3 style="font-size:1rem;font-weight:700;margin-bottom:.3rem">Login to save your progress</h3><p style="font-size:.82rem;color:var(--muted);line-height:1.5">Your saved builds, teams, items, and Pokédex progress are tied to your account.</p><button class="btn btn-red" style="margin-top:.9rem" onclick="showLoginModal(\'Sign in to save your builds, teams, items, and collection progress.\')">Login</button></div>';
+  if(isMobile){
+    rb.innerHTML='<div class="card" style="padding:1.3rem;text-align:center;max-width:420px"><div style="margin-bottom:.5rem;font-size:1.8rem">🔐</div><h3 style="font-size:1rem;font-weight:700;margin-bottom:.3rem">Save your progress</h3><p style="font-size:.82rem;color:var(--muted);line-height:1.5">Sign in or create an account to save your builds, teams, items, and Pokédex progress.</p><div style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.9rem"><button class="btn btn-red" onclick="authMode=\'login\';showLoginModal()">Sign In</button><button class="btn btn-ghost" onclick="authMode=\'signup\';showLoginModal()">Sign Up</button></div></div>';
+  }else{
+    rb.innerHTML='<div style="color:var(--muted);font-size:.85rem">Sign in from the side panel to save your builds, teams, items, and collection progress.</div>';
+  }
   return;
 }
-  if(!allBuilds.length){rb.innerHTML='<div style="color:var(--muted);font-size:.85rem">No builds yet</div>';return}
-  rb.innerHTML=allBuilds.slice(0,5).map(function(b){
+  if(!allBuilds.length){rb.innerHTML=(isMobile?'<div style="display:flex;justify-content:flex-end;margin-bottom:.6rem"><button class="btn btn-ghost" onclick="logout()">Sign Out</button></div>':'')+'<div style="color:var(--muted);font-size:.85rem">No builds yet</div>';return}
+  var mobileSignOut=isMobile?'<div style="display:flex;justify-content:flex-end;margin-bottom:.6rem"><button class="btn btn-ghost" onclick="logout()">Sign Out</button></div>':'';
+  rb.innerHTML=mobileSignOut+allBuilds.slice(0,5).map(function(b){
     var sc={hp:'#ef4444',atk:'#f08030',def:'#f7d02c',spa:'#6390f0',spd:'#7ac74c',spe:'#f95587'};
     var max=b.max_sp||66;
     var bars='<div class="mini-bars">'+['hp_sp','atk_sp','def_sp','spa_sp','spd_sp','spe_sp'].map(function(k,i){var v=b[k]||0;var c=Object.values(sc)[i];return'<div class="mini-bar" style="background:'+c+';opacity:'+(v>0?1:.15)+'"></div>'}).join('')+'</div>';
@@ -211,7 +405,7 @@ function togShinyAll(){showShiny=!showShiny;document.getElementById('shinyAll').
 async function togShinyObt(ev,pid){ev.stopPropagation();if(!usr){toast('Sign in first','err');return}
   try{var newVal=!uShinyDex[pid];
     var u=new URL(API+'/rest/v1/user_pokedex');u.searchParams.set('on_conflict','user_id,pokemon_id');
-    var r=await fetch(u.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,pokemon_id:pid,obtained:uDex[pid]||false,shiny_obtained:newVal})});
+    var r=await authFetch(u.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,pokemon_id:pid,obtained:uDex[pid]||false,shiny_obtained:newVal})},true);
     if(!r.ok)throw new Error((await r.json().catch(function(){return{}})).message||r.status);
     if(newVal){uShinyDex[pid]=true}else{delete uShinyDex[pid]}
     toast(newVal?'Shiny obtained!':'Shiny removed');renderDex();renderDash()
@@ -225,7 +419,7 @@ async function togObt(ev,pid){ev.stopPropagation();if(!usr){toast('Sign in first
   }else{
     // Use upsert to avoid duplicate key errors
     var u=new URL(API+'/rest/v1/user_pokedex');u.searchParams.set('on_conflict','user_id,pokemon_id');
-    var r=await fetch(u.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,pokemon_id:pid,obtained:true})});
+    var r=await authFetch(u.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,pokemon_id:pid,obtained:true})},true);
     if(!r.ok)throw new Error((await r.json().catch(function(){return{}})).message||r.status);
     uDex[pid]=true;toast('Obtained!')
   }renderDex();renderDash()}catch(e){toast(e.message,'err')}}
@@ -404,7 +598,7 @@ async function loadUItems(){if(!tk)return;try{var rows=await q('user_items',{sel
 async function togItem(iid){if(!usr){toast('Sign in first','err');return}
   try{if(uItems[iid]){await rm('user_items',{'user_id':'eq.'+usr.id,'item_id':'eq.'+iid},true);delete uItems[iid];toast('Removed')}
   else{var u=new URL(API+'/rest/v1/user_items');u.searchParams.set('on_conflict','user_id,item_id');
-    var r=await fetch(u.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,item_id:iid,obtained:true})});
+    var r=await authFetch(u.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,item_id:iid,obtained:true})},true);
     if(!r.ok)throw new Error((await r.json().catch(function(){return{}})).message||r.status);
     uItems[iid]=true;toast('Item obtained!')}renderItems()}catch(e){toast(e.message,'err')}}
 function renderItems(){var s=document.getElementById('itemSearch').value.toLowerCase();var f=allItems.filter(function(i){return!s||i.name.toLowerCase().indexOf(s)!==-1});document.getElementById('itemsGrid').innerHTML=f.map(function(i){var on=uItems[i.id];return'<div class="it-card" onclick="togItem(\''+i.id+'\')"><span class="it-name">'+i.name+'</span><div class="it-chk'+(on?' on':'')+'\">'+(on?'✓':'')+'</div></div>'}).join('')||'<div class="empty"><div class="em">🔍</div>No items match</div>'}
@@ -430,7 +624,7 @@ var buildView='list',editBuildId=null,detailBuildId=null,spV={hp:0,atk:0,def:0,s
 var statCols={hp:'#ef4444',atk:'#f08030',def:'#f7d02c',spa:'#6390f0',spd:'#7ac74c',spe:'#f95587'};
 var statNames={hp:'HP',atk:'ATTACK',def:'DEFENSE',spa:'SP. ATK',spd:'SP. DEF',spe:'SPEED'};
 
-async function upd(t,m,b,a){var u=new URL(API+'/rest/v1/'+t);Object.entries(m).forEach(function(e){u.searchParams.set(e[0],e[1])});var r=await fetch(u.toString(),{method:'PATCH',headers:Object.assign(h(a),{'Prefer':'return=representation'}),body:JSON.stringify(b)});if(!r.ok){var e=await r.json().catch(function(){return{}});throw new Error(e.message||r.status)}return r.json()}
+async function upd(t,m,b,a){var u=new URL(API+'/rest/v1/'+t);Object.entries(m).forEach(function(e){u.searchParams.set(e[0],e[1])});var r=await authFetch(u.toString(),{method:'PATCH',headers:Object.assign(h(a),{'Prefer':'return=representation'}),body:JSON.stringify(b)},a);if(!r.ok){var e=await r.json().catch(function(){return{}});throw new Error(e.message||r.status)}return r.json()}
 
 function showBuildList(){buildView='list';renderBuilds()}
 function showBuildDetail(id){detailBuildId=id;buildView='detail';
@@ -584,30 +778,26 @@ async function saveBuild(){
 }
 function confirmDelBuild(id,name){document.getElementById('cmEmoji').textContent='⚔️';document.getElementById('cmTitle').textContent='Delete Build?';document.getElementById('cmMsg').textContent='Delete "'+name+'"? This cannot be undone.';document.getElementById('cmBtn').onclick=function(){delBuild(id)};document.getElementById('confirmMod').classList.add('open')}
 async function delBuild(id){try{await rm('builds',{'id':'eq.'+id},true);closeCm();toast('Build deleted');await loadBuilds();renderBuilds();renderDash()}catch(e){toast(e.message,'err')}}
-function closeCm(){document.getElementById('confirmMod').classList.remove('open')}
+function closeCm(){authMode='login';document.getElementById('confirmMod').classList.remove('open')}
 function showLoginModal(msg){
-  document.getElementById('cmEmoji').textContent='🔐';
-  document.getElementById('cmTitle').textContent='Login';
+  var isSignup=authMode==='signup';
+  document.getElementById('cmEmoji').textContent=isSignup?'✨':'🔐';
+  document.getElementById('cmTitle').textContent=isSignup?'Create Account':'Sign In';
   document.getElementById('cmMsg').innerHTML=(msg?'<div style="font-size:.84rem;color:var(--muted);margin-bottom:.9rem;line-height:1.5">'+msg+'</div>':'')+
     '<div style="display:flex;flex-direction:column;gap:.65rem;text-align:left">'+
       '<input type="email" id="loginEmail" placeholder="Email" class="ed-input">'+
       '<input type="password" id="loginPass" placeholder="Password" class="ed-input">'+
+      '<div style="font-size:.72rem;color:var(--muted)">'+(isSignup?'Create an account to save your builds, teams, items, and Pokédex progress.':'Sign in to access your saved builds, teams, items, and collection progress.')+'</div>'+
     '</div>';
-  document.getElementById('cmBtn').textContent='Sign In';
+  document.getElementById('cmBtn').textContent=isSignup?'Create Account':'Sign In';
   document.getElementById('cmBtn').className='btn btn-red';
-  document.getElementById('cmBtn').onclick=function(){login()};
+  document.querySelector('#confirmMod .btn.btn-ghost').textContent='Close';
+  document.getElementById('cmBtn').onclick=function(){if(authMode==='signup')signup();else login()};
   document.getElementById('confirmMod').classList.add('open');
   setTimeout(function(){var el=document.getElementById('loginEmail');if(el)el.focus()},0);
 }
 
-function maybeShowInitialAuthPrompt(){
-  try{
-    if(usr)return;
-    if(sessionStorage.getItem('champions_auth_prompt_shown'))return;
-    sessionStorage.setItem('champions_auth_prompt_shown','1');
-    showLoginModal('Sign in to save your builds, teams, items, and collection progress.');
-  }catch(e){}
-}
+function maybeShowInitialAuthPrompt(){}
 
 // #SECTION: TEAMS
 // ═══════════════════════════════════════
@@ -1020,9 +1210,7 @@ loadUser=async function(){await Promise.all([loadBuilds(),loadTeamRoster(),loadU
 // APP INITIALIZATION
 // Initial data loading and startup behavior.
 // ═══════════════════════════════════════
-updAuth();
-if(restoreSession()){updAuth();loadUser()}
-loadPkmn();loadItems();loadNatures();loadAchievements();setTimeout(maybeShowInitialAuthPrompt,250);
+restoreSession();updAuth();loadPkmn();loadItems();loadNatures();loadAchievements();if(usr){loadUser()}else{maybeShowInitialAuthPrompt()}
 
 // ═══════════════════════════════════════
 // PWA / SERVICE WORKER
