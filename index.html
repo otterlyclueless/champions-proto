@@ -14,20 +14,26 @@
 <link rel="stylesheet" href="styles.css">
 <title>Champions Prototype Testing</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.js"></script>
 </head>
 <body>
 <nav class="sb" id="sb">
   <div class="sb-brand"><div class="sb-logo"><img src="icons/logo.png" alt="PC"></div><div><div class="sb-brand-text">Champions</div><div class="sb-brand-sub">Competitive Builder</div></div></div>
   <div class="sb-nav">
-    <div class="sb-item active" data-p="dash"><div class="sb-icon">📊</div><span class="sb-label">Dashboard</span></div>
-    <div class="sb-item" data-p="dex"><div class="sb-icon">📋</div><span class="sb-label">Pokédex</span><span class="sb-count" id="nc0">—</span></div>
-    <div class="sb-item" data-p="items"><div class="sb-icon">🎒</div><span class="sb-label">Items</span><span class="sb-count" id="nc3">—</span></div>
-    <div class="sb-item" data-p="builds"><div class="sb-icon">⚔️</div><span class="sb-label">Builds</span><span class="sb-count" id="nc1">—</span></div>
-    <div class="sb-item" data-p="teams"><div class="sb-icon">🏆</div><span class="sb-label">Teams</span><span class="sb-count" id="nc2">—</span></div>
-    <div class="sb-item" data-p="natures"><div class="sb-icon">🧬</div><span class="sb-label">Natures</span></div>
-<div class="sb-item" data-p="profile"><div class="sb-icon sb-profile-icon" id="profileNavIcon">⚪</div><span class="sb-label">Profile</span></div>
+    <div class="sb-item active" data-p="dash"><div class="sb-icon"><i class="ph-bold ph-squares-four"></i></div><span class="sb-label">Dashboard</span></div>
+    <div class="sb-item" data-p="dex"><div class="sb-icon"><i class="ph-bold ph-book-open-text"></i></div><span class="sb-label">Pokédex</span><span class="sb-count" id="nc0">—</span></div>
+    <div class="sb-item" data-p="builds"><div class="sb-icon"><i class="ph-bold ph-sword"></i></div><span class="sb-label">Builds</span><span class="sb-count" id="nc1">—</span></div>
+    <div class="sb-item" data-p="teams"><div class="sb-icon"><i class="ph-bold ph-trophy"></i></div><span class="sb-label">Teams</span><span class="sb-count" id="nc2">—</span></div>
+    <!-- Desktop-only items (hidden on mobile; accessed via More sheet there) -->
+    <div class="sb-item sb-desktop" data-p="items"><div class="sb-icon"><i class="ph-bold ph-backpack"></i></div><span class="sb-label">Items</span><span class="sb-count" id="nc3">—</span></div>
+    <div class="sb-item sb-desktop" data-p="natures"><div class="sb-icon"><i class="ph-bold ph-dna"></i></div><span class="sb-label">Natures</span></div>
+    <div class="sb-item sb-desktop" data-p="profile"><div class="sb-icon sb-profile-icon" id="profileNavIcon"><i class="ph-bold ph-user-circle"></i></div><span class="sb-label">Profile</span></div>
+    <!-- Mobile-only More button (opens sheet) -->
+    <div class="sb-item sb-mobile" id="sbMore" onclick="openMoreSheet()"><div class="sb-icon"><i class="ph-bold ph-dots-three"></i></div><span class="sb-label">More</span></div>
   </div>
   <div class="sb-foot">
     <div id="authEl"><div class="auth-c"><input type="email" id="eIn" placeholder="Email"></div><div class="auth-c" style="margin-top:3px"><input type="password" id="pIn" placeholder="Password"><button class="ab ab-red" onclick="login()">Go</button></div></div>
@@ -39,15 +45,15 @@
 <div class="main">
   <!-- Dashboard -->
   <div class="page show" id="pg-dash">
-    <div class="ph"><div class="ph-title">📊 Trainer Dashboard</div><div class="ph-sub">Welcome back, Trainer</div></div>
+    <div class="pg-head"><div class="pg-title"><i class="ph-bold ph-squares-four"></i>Trainer Dashboard</div><div class="pg-sub">Welcome back, Trainer</div></div>
     <div id="dashContent"></div>
   </div>
 
   <!-- Pokédex -->
   <div class="page" id="pg-dex">
-    <div class="ph" id="dexHeader">
-      <div class="ph-title">📋 Pokédex</div>
-      <div class="ph-sub">258 Pokémon</div>
+    <div class="pg-head" id="dexHeader">
+      <div class="pg-title"><i class="ph-bold ph-book-open-text"></i>Pokédex</div>
+      <div class="pg-sub">258 Pokémon</div>
       <div class="dex-progress" id="dexProgress" style="display:none">
         <div class="dex-progress-bar"><div class="dex-progress-fill" id="dexProgFill"></div></div>
         <div class="dex-progress-text" id="dexProgText">0 / 258</div>
@@ -76,7 +82,7 @@
 
   <!-- Items -->
   <div class="page" id="pg-items">
-    <div class="ph"><div class="ph-title">🎒 Items</div><div class="ph-sub">Track your held items collection</div></div>
+    <div class="pg-head"><div class="pg-title"><i class="ph-bold ph-backpack"></i>Items</div><div class="pg-sub">Track your held items collection</div></div>
     <div style="padding:.6rem 2rem"><input class="search-box" id="itemSearch" placeholder="Search items..."></div>
     <div class="items-grid" id="itemsGrid"><div class="empty"><div class="em">⏳</div>Loading...</div></div>
   </div>
@@ -93,14 +99,27 @@
 
   <!-- Natures -->
   <div class="page" id="pg-natures">
-    <div class="ph"><div class="ph-title">🧬 Natures</div><div class="ph-sub">All 25 natures with stat modifiers</div></div>
+    <div class="pg-head"><div class="pg-title"><i class="ph-bold ph-dna"></i>Natures</div><div class="pg-sub">All 25 natures with stat modifiers</div></div>
     <div class="nat-grid" id="natGrid"><div class="empty"><div class="em">⏳</div>Loading...</div></div>
   </div>
 
   <!-- Profile -->
   <div class="page" id="pg-profile">
-    <div class="ph"><div class="ph-title">👤 Trainer Profile</div><div class="ph-sub">Your stats, achievements, and activity</div></div>
+    <div class="pg-head"><div class="pg-title"><i class="ph-bold ph-user-circle"></i>Trainer Profile</div><div class="pg-sub">Your stats, achievements, and activity</div></div>
     <div style="padding:1.2rem 2rem" id="profileContent"><div class="empty"><div class="em">🔒</div>Sign in to view your profile</div></div>
+  </div>
+
+  <!-- More Sheet (mobile overflow nav) -->
+  <div class="more-sheet-ov" id="moreSheetOv">
+    <div class="more-sheet">
+      <div class="more-sheet-handle"></div>
+      <div class="more-sheet-title">More</div>
+      <div class="more-sheet-grid">
+        <div class="more-sheet-item" onclick="sheetNav('items')"><div class="more-sheet-icon"><i class="ph-bold ph-backpack"></i></div>Items</div>
+        <div class="more-sheet-item" onclick="sheetNav('natures')"><div class="more-sheet-icon"><i class="ph-bold ph-dna"></i></div>Natures</div>
+        <div class="more-sheet-item" onclick="sheetNav('profile')"><div class="more-sheet-icon"><i class="ph-bold ph-user-circle"></i></div>Profile</div>
+      </div>
+    </div>
   </div>
 
   <!-- Confirm Modal -->

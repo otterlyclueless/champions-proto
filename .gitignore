@@ -1,0 +1,17 @@
+.DS_Store
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Node / dependencies (future-proofing)
+node_modules/
+
+# Logs / temp
+*.log
+.env
+.env.local
