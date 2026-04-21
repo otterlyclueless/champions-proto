@@ -248,6 +248,9 @@ document.querySelectorAll('.sb-item').forEach(function(i){
   i.addEventListener('click',function(){
     var target=i.dataset.p;
 
+    // Items without data-p (e.g. the mobile "More" button) handle their own click via onclick
+    if(!target) return;
+
     if(!usr&&['builds','teams'].indexOf(target)!==-1){
   showLoginModal('Sign in to view your saved builds, teams, and collection progress.');
   return;
@@ -259,6 +262,37 @@ document.querySelectorAll('.sb-item').forEach(function(i){
     document.getElementById('pg-'+target).classList.add('show');
   })
 });
+
+// ═══════════════════════════════════════
+// MORE SHEET (mobile overflow navigation)
+// Opens a bottom sheet with Items / Natures / Profile.
+// Desktop shows these as regular sidebar items (.sb-desktop), so the sheet is never opened there.
+// ═══════════════════════════════════════
+function openMoreSheet(){document.getElementById('moreSheetOv').classList.add('open')}
+function closeMoreSheet(){document.getElementById('moreSheetOv').classList.remove('open')}
+function sheetNav(page){
+  // Gate protected pages just like the main click handler does
+  if(!usr&&['builds','teams'].indexOf(page)!==-1){
+    closeMoreSheet();
+    showLoginModal('Sign in to view your saved builds, teams, and collection progress.');
+    return;
+  }
+  // Switch page + highlight "More" as active anchor (so user always knows how they got there)
+  document.querySelectorAll('.sb-item').forEach(function(n){n.classList.remove('active')});
+  var more=document.getElementById('sbMore'); if(more) more.classList.add('active');
+  // Also activate the hidden desktop sb-item for this page so desktop active-state stays correct
+  var deskItem=document.querySelector('.sb-item[data-p='+page+']'); if(deskItem) deskItem.classList.add('active');
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show')});
+  var pg=document.getElementById('pg-'+page); if(pg) pg.classList.add('show');
+  closeMoreSheet();
+}
+// Backdrop click dismisses the sheet
+document.addEventListener('click',function(e){
+  var ov=document.getElementById('moreSheetOv');
+  if(ov&&e.target===ov)closeMoreSheet();
+});
+// Escape key dismisses the sheet
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeMoreSheet()});
 
 // #SECTION: AUTH
 // ═══════════════════════════════════════
