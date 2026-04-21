@@ -4,7 +4,7 @@
 
 **A mobile-first competitive team-building PWA for Pokémon Champions.**
 
-[Live app](https://otterlyclueless.github.io/champions-proto/) · [Admin](https://otterlyclueless.github.io/champions-proto/admindb.html) · [v1.0.0 release](https://github.com/otterlyclueless/champions-proto/releases)
+[Live app](https://otterlyclueless.github.io/champions-forge/) · [Admin](https://otterlyclueless.github.io/champions-forge/admindb.html) · [v1.0.0 release](https://github.com/otterlyclueless/champions-forge/releases)
 
 ![PWA](https://img.shields.io/badge/PWA-installable-4c51bf?style=flat-square)
 ![Stack](https://img.shields.io/badge/stack-vanilla_HTML_JS_CSS-f59e0b?style=flat-square)
@@ -79,7 +79,7 @@ Species-locked items are enforced: Light Ball only shows for Pikachu, each Mega 
 | Build/team | `builds` · `team_builds` (junction) · `teams` |
 | System | `achievements` (16) · `battle_log` |
 
-All migrations and RLS policies are in the public repo — see the `sql/` directory (coming soon) or the [admin dashboard](https://otterlyclueless.github.io/champions-proto/admindb.html) for the live view.
+All migrations and RLS policies are in the public repo — see the `sql/` directory (coming soon) or the [admin dashboard](https://otterlyclueless.github.io/champions-forge/admindb.html) for the live view.
 
 ## 🚀 Running locally
 
@@ -87,8 +87,8 @@ This is a static-file PWA. No build step, no package install.
 
 ```bash
 # 1. Clone
-git clone https://github.com/otterlyclueless/champions-proto.git
-cd champions-proto
+git clone https://github.com/otterlyclueless/champions-forge.git
+cd champions-forge
 
 # 2. Open with any static server. VS Code's Live Server extension is easiest:
 #    Right-click index.html → "Open with Live Server"
