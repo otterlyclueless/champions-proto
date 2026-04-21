@@ -12,6 +12,10 @@ var POKEBALL_ICON='<svg viewBox="0 0 100 100" fill="currentColor"><circle cx="50
 function dashNav(page){
   document.querySelectorAll('.sb-item').forEach(function(n){n.classList.remove('active')});
   var tgt=document.querySelector('[data-p='+page+']');if(tgt)tgt.classList.add('active');
+  // On mobile, Items/Natures/Profile are routed via the More sheet — also highlight the More button
+  if(['items','natures','profile'].indexOf(page)!==-1){
+    var more=document.getElementById('sbMore');if(more)more.classList.add('active');
+  }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show')});
   document.getElementById('pg-'+page).classList.add('show');
 }
