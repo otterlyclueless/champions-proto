@@ -1252,6 +1252,15 @@ body.pub-route:not(.pub-route-authed) .main{margin-left:0 !important}
 .pub-cta:hover{background:#dc2626}
 [data-theme="light"] .pub-cta:hover{background:#b91c1c}
 
+/* Drop F.2.1 v7: when signed-in viewing a public page, the mobile bottom nav
+   stays visible (~72px tall). Push the FAB above it so it doesn't get stuck
+   behind the nav bar. Only applies at mobile widths (nav is in sidebar on desktop). */
+@media (max-width:899px){
+  body.pub-route-authed .pub-cta{
+    bottom:calc(72px + env(safe-area-inset-bottom,0px) + 22px);
+  }
+}
+
 /* #SECTION: DROP F.2a — BUILD EDITOR SHARE CARD */
 /* ══════════════════════════════════════════════════════════════════
    Share toggle card injected into the build editor form when editing
