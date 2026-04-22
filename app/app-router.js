@@ -844,12 +844,39 @@ function canShareFiles(testFile){
   try{return navigator.canShare({files:[testFile]})}catch(_){return false}
 }
 
+// Drop F.2.1 v7: localStorage sprite cache — first share of a Pokémon is slow
+// (fetches through CORS proxy), subsequent shares are instant.
+// Max ~4MB cache; oldest half evicted when over quota.
+var SPRITE_CACHE_KEY='champions_sprite_cache_v1';
+var SPRITE_CACHE_MAX=4*1024*1024;
+
+function readSpriteCache(){
+  try{return JSON.parse(localStorage.getItem(SPRITE_CACHE_KEY)||'{}')}
+  catch(_){return{}}
+}
+function writeSpriteCache(cache){
+  try{
+    var serialized=JSON.stringify(cache);
+    if(serialized.length>SPRITE_CACHE_MAX){
+      // Simple LRU-ish eviction: drop oldest half of entries (insertion-ordered keys)
+      var keys=Object.keys(cache);
+      for(var i=0;i<Math.floor(keys.length/2);i++)delete cache[keys[i]];
+      serialized=JSON.stringify(cache);
+    }
+    localStorage.setItem(SPRITE_CACHE_KEY,serialized);
+  }catch(_){/* quota or private mode — silently skip */}
+}
+
 // Fetch an image URL and return a data: URL. Multiple strategies to deal with
-// CORS: direct fetch → corsproxy.io → allorigins.win → transparent 1×1.
+// CORS: cache → direct fetch → corsproxy.io → allorigins.win → transparent 1×1.
 // Logs loudly on failure so DevTools can show what broke.
 async function spriteToDataUrl(url){
   if(!url)return '';
   if(url.startsWith('data:'))return url;
+
+  // Check localStorage cache first (instant on subsequent shares)
+  var cache=readSpriteCache();
+  if(cache[url])return cache[url];
 
   async function fetchToDataUrl(u,label){
     var r=await fetch(u,{mode:'cors',cache:'force-cache'});
@@ -867,15 +894,21 @@ async function spriteToDataUrl(url){
     });
   }
 
+  function cacheAndReturn(dataUrl){
+    cache[url]=dataUrl;
+    writeSpriteCache(cache);
+    return dataUrl;
+  }
+
   // 1) Direct fetch — works for GitHub (PokeAPI items), etc.
-  try{return await fetchToDataUrl(url,'direct')}catch(e1){
+  try{return cacheAndReturn(await fetchToDataUrl(url,'direct'))}catch(e1){
     console.log('[spriteToDataUrl] direct failed for',url,'→',e1.message);
   }
 
   // 2) CORS proxy #1 — corsproxy.io
   try{
     var proxied1='https://corsproxy.io/?'+encodeURIComponent(url);
-    return await fetchToDataUrl(proxied1,'corsproxy.io');
+    return cacheAndReturn(await fetchToDataUrl(proxied1,'corsproxy.io'));
   }catch(e2){
     console.log('[spriteToDataUrl] corsproxy.io failed for',url,'→',e2.message);
   }
@@ -883,7 +916,7 @@ async function spriteToDataUrl(url){
   // 3) CORS proxy #2 — allorigins.win
   try{
     var proxied2='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
-    return await fetchToDataUrl(proxied2,'allorigins');
+    return cacheAndReturn(await fetchToDataUrl(proxied2,'allorigins'));
   }catch(e3){
     console.log('[spriteToDataUrl] allorigins failed for',url,'→',e3.message);
   }
@@ -891,7 +924,7 @@ async function spriteToDataUrl(url){
   // 4) CORS proxy #3 — codetabs
   try{
     var proxied3='https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(url);
-    return await fetchToDataUrl(proxied3,'codetabs');
+    return cacheAndReturn(await fetchToDataUrl(proxied3,'codetabs'));
   }catch(e4){
     console.log('[spriteToDataUrl] codetabs failed for',url,'→',e4.message);
   }
@@ -1267,11 +1300,10 @@ async function shareImage(kind,id){
     if(renderer==='htmlToImage'){
       blob=await window.htmlToImage.toBlob(target,{
         width:1200,height:630,
-        pixelRatio:2,
-        cacheBust:true,
+        pixelRatio:1.5,  // Drop F.2.1 v7: 1.5 vs 2 — ~30-40% faster render, still sharp on retina
+        cacheBust:false, // v7: let browser reuse cached data-URLs between captures
         backgroundColor:'transparent',
         style:{margin:'0',padding:'0'},
-        // html-to-image has a higher chance of font-loading race — let it settle
         fetchRequestInit:{cache:'force-cache'}
       });
     }else{
