@@ -341,6 +341,7 @@ function renderTeams(){
     '<button class="vh-btn vh-btn-md vh-btn-more" onclick="event.stopPropagation();toggleTmlOm(\''+t.id+'\')" aria-label="More">⋮</button>'+
       '<div class="om-menu" id="tmlOm-'+t.id+'">'+
         '<button class="om-item" onclick="event.stopPropagation();closeAllTmlOms();showTeamDetail(\''+t.id+'\')"><span class="om-item-icon">📋</span>View detail</button>'+
+        (t.is_public&&t.share_code?'<button class="om-item" onclick="event.stopPropagation();closeAllTmlOms();shareImage(\'team\',\''+t.id+'\')"><span class="om-item-icon">🔗</span>Share team</button>':'')+
         '<div class="om-sep"></div>'+
         '<button class="om-item destructive" onclick="event.stopPropagation();closeAllTmlOms();confirmDelTeam(\''+t.id+'\',\''+safeName+'\')"><span class="om-item-icon">🗑</span>Delete team</button>'+
       '</div>'+
@@ -571,6 +572,8 @@ var hdr='<div class="pg-head"><div class="vh-title-row">'+
         '<div class="om-wrap">'+
           '<button class="vh-btn vh-btn-sm vh-btn-more" onclick="toggleTmlOm(\''+t.id+'\')" aria-label="More">⋮</button>'+
           '<div class="om-menu" id="tmlOm-'+t.id+'">'+
+            (t.is_public&&t.share_code?'<button class="om-item" onclick="closeAllTmlOms();shareImage(\'team\',\''+t.id+'\')"><span class="om-item-icon">🔗</span>Share team</button>':'')+
+            (t.is_public&&t.share_code?'<div class="om-sep"></div>':'')+
             '<button class="om-item destructive" onclick="closeAllTmlOms();confirmDelTeam(\''+t.id+'\',\''+safeName+'\')"><span class="om-item-icon">🗑</span>Delete team</button>'+
           '</div>'+
         '</div>'+

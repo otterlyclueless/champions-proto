@@ -243,6 +243,7 @@ function renderBuilds(){
             '<div class="om-menu" id="bldOm-'+b.id+'">'+
               '<button class="om-item" onclick="event.stopPropagation();closeAllBldOms();togFav(null,\''+b.id+'\')"><span class="om-item-icon">'+(b.is_favourite?'⭐':'☆')+'</span>'+(b.is_favourite?'Remove favourite':'Add to favourites')+'</button>'+
               '<button class="om-item" onclick="event.stopPropagation();closeAllBldOms();dupBuild(\''+b.id+'\')"><span class="om-item-icon">🔄</span>Duplicate build</button>'+
+              (b.is_public&&b.share_code?'<button class="om-item" onclick="event.stopPropagation();closeAllBldOms();shareImage(\'build\',\''+b.id+'\')"><span class="om-item-icon">🔗</span>Share build</button>':'')+
               '<button class="om-item" onclick="event.stopPropagation();closeAllBldOms();exportShowdown(\''+b.id+'\')"><span class="om-item-icon">📤</span>Export to Showdown</button>'+
               '<div class="om-sep"></div>'+
               '<button class="om-item destructive" onclick="event.stopPropagation();closeAllBldOms();confirmDelBuild(\''+b.id+'\',\''+safeName+'\')"><span class="om-item-icon">🗑</span>Delete build</button>'+
@@ -942,6 +943,7 @@ function renderBuildDetail(c){
         '<div class="om-menu" id="bldOm-bd-'+b.id+'">'+
           '<button class="om-item" onclick="closeAllBldOms();togFav(null,\''+b.id+'\')"><span class="om-item-icon">'+favIcon+'</span>'+favLabel+'</button>'+
           '<button class="om-item" onclick="closeAllBldOms();dupBuild(\''+b.id+'\')"><span class="om-item-icon">🔄</span>Duplicate build</button>'+
+          (b.is_public&&b.share_code?'<button class="om-item" onclick="closeAllBldOms();shareImage(\'build\',\''+b.id+'\')"><span class="om-item-icon">🔗</span>Share build</button>':'')+
           '<button class="om-item" onclick="closeAllBldOms();exportShowdown(\''+b.id+'\')"><span class="om-item-icon">📤</span>Export to Showdown</button>'+
           '<div class="om-sep"></div>'+
           '<button class="om-item destructive" onclick="closeAllBldOms();confirmDelBuild(\''+b.id+'\',\''+safeName+'\')"><span class="om-item-icon">🗑</span>Delete build</button>'+
