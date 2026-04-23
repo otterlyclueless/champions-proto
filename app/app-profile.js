@@ -254,7 +254,10 @@ if(!usr){
   var achUnlocked=allAch.filter(function(a){return userAch[a.id]}).length;
   // Trainer Card
   var avHtml=userProfile&&userProfile.avatar_url?'<img src="'+userProfile.avatar_url+'" alt="Avatar">':'<img src="icons/logo.png" alt="PC" style="padding:4px">';
-  var card='<input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarFile(this)"><div class="trainer-card"><div class="tc-wm">'+pb(200)+'</div><div class="tc-top"><div class="tc-avatar" onclick="triggerAvatarUpload()">'+avHtml+'<div class="av-overlay">📷 Change</div></div><div class="tc-info"><div class="tc-label">Trainer</div><h2>'+dn+'</h2><div class="tc-email">'+usr.email+'</div><div class="name-edit"><input id="dnInput" value="'+dn+'" placeholder="Display name"><button onclick="saveDisplayName()">Save</button></div></div></div><div class="tc-stats"><div class="tc-stat"><div class="tc-sv" style="color:#22c55e">'+obtC+'</div><div class="tc-sl">Obtained</div></div><div class="tc-stat"><div class="tc-sv" style="color:#8b5cf6">'+shC+'</div><div class="tc-sl">Shinies</div></div><div class="tc-stat"><div class="tc-sv" style="color:#3b82f6">'+blC+'</div><div class="tc-sl">Builds</div></div><div class="tc-stat"><div class="tc-sv" style="color:#f59e0b">'+tmC+'</div><div class="tc-sl">Teams</div></div><div class="tc-stat"><div class="tc-sv" style="color:#ef4444">'+achUnlocked+'<span style="font-size:.8rem;opacity:.5">/'+allAch.length+'</span></div><div class="tc-sl">Achievements</div></div></div></div>';
+  var unDisplay=userProfile&&userProfile.username
+    ?'<div class="tc-username"><span class="tc-un-at">@</span>'+userProfile.username+'<button class="tc-un-edit" onclick="showUsernameModal(null)" title="Change username">✏️</button></div>'
+    :'<button class="tc-un-set" onclick="showUsernameModal(null)">Set username →</button>';
+  var card='<input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarFile(this)"><div class="trainer-card"><div class="tc-wm">'+pb(200)+'</div><div class="tc-top"><div class="tc-avatar" onclick="triggerAvatarUpload()">'+avHtml+'<div class="av-overlay">📷 Change</div></div><div class="tc-info"><div class="tc-label">Trainer</div><h2>'+dn+'</h2><div class="tc-email">'+usr.email+'</div><div class="name-edit"><input id="dnInput" value="'+dn+'" placeholder="Display name"><button onclick="saveDisplayName()">Save</button></div>'+unDisplay+'</div></div><div class="tc-stats"><div class="tc-stat"><div class="tc-sv" style="color:#22c55e">'+obtC+'</div><div class="tc-sl">Obtained</div></div><div class="tc-stat"><div class="tc-sv" style="color:#8b5cf6">'+shC+'</div><div class="tc-sl">Shinies</div></div><div class="tc-stat"><div class="tc-sv" style="color:#3b82f6">'+blC+'</div><div class="tc-sl">Builds</div></div><div class="tc-stat"><div class="tc-sv" style="color:#f59e0b">'+tmC+'</div><div class="tc-sl">Teams</div></div><div class="tc-stat"><div class="tc-sv" style="color:#ef4444">'+achUnlocked+'<span style="font-size:.8rem;opacity:.5">/'+allAch.length+'</span></div><div class="tc-sl">Achievements</div></div></div></div>';
   // Achievements
   var achHtml='<h3 style="font-size:1.05rem;font-weight:700;margin-top:1.5rem;display:flex;align-items:center;gap:.4rem">🏆 Achievements <span style="font-size:.78rem;color:var(--muted);font-weight:500">'+achUnlocked+' / '+allAch.length+' unlocked</span></h3>';
   var catOrder=['collection','shiny','builds','teams','items'];
@@ -274,6 +277,157 @@ if(!usr){
   acts.sort(function(a,b){return new Date(b.time)-new Date(a.time)});
   actHtml+=acts.slice(0,8).map(function(a){var d=new Date(a.time);var ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});return'<div class="act-item">'+(a.img?'<img src="'+a.img+'" onerror="this.style.display=\'none\'">':'<div style="width:36px;height:36px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">🏆</div>')+'<span class="act-text">'+a.text+'</span><span class="act-time">'+ds+'</span></div>'}).join('')||'<div style="color:var(--muted);font-size:.85rem">No activity yet</div>';
   actHtml+='</div>';
-  c.innerHTML=card+achHtml+actHtml;
+  var accountHtml=
+    '<div class="prof-account-section">'+
+      '<h3 style="font-size:1.05rem;font-weight:700;margin-top:1.5rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem">⚙️ Account</h3>'+
+      '<div class="prof-account-btns">'+
+        '<button class="btn btn-ghost prof-signout-btn" onclick="logout()"><i class="ph-bold ph-sign-out"></i> Sign Out</button>'+
+        '<button class="btn prof-delete-btn" onclick="confirmDeleteAccount()"><i class="ph-bold ph-trash"></i> Delete Account</button>'+
+      '</div>'+
+      '<p class="prof-delete-hint">Deleting your account permanently removes all your builds, teams, and Pokédex progress.</p>'+
+    '</div>';
+  c.innerHTML=card+achHtml+actHtml+accountHtml;
 updProfileNavIcon()
+}
+
+// #SECTION: ACCOUNT ACTIONS (Drop F.3)
+// ═══════════════════════════════════════
+
+function confirmDeleteAccount(){
+  resetConfirmMod();
+  document.getElementById('cmEmoji').textContent='⚠️';
+  document.getElementById('cmTitle').textContent='Delete Account?';
+  document.getElementById('cmMsg').textContent='This permanently deletes your account, all builds, teams, and Pokédex progress. This cannot be undone.';
+  var btn=document.getElementById('cmBtn');
+  btn.textContent='Yes, delete everything';
+  btn.className='btn btn-red';
+  btn.onclick=function(){deleteAccount();};
+  document.getElementById('confirmMod').classList.add('open');
+}
+
+async function deleteAccount(){
+  closeCm();
+  toast('Deleting account…','info');
+  try{
+    var uid=usr.id;
+    // Delete all user data — order matters: junction tables first, then owned rows.
+    // build_likes / team_likes cascade from builds/teams but we delete explicitly to be safe.
+    // team_builds rows for this user's teams are handled by the teams DELETE cascade.
+    await Promise.allSettled([
+      rm('build_likes',{'user_id':'eq.'+uid},true),
+      rm('team_likes',{'user_id':'eq.'+uid},true),
+      rm('user_achievements',{'user_id':'eq.'+uid},true),
+      rm('user_pokedex',{'user_id':'eq.'+uid},true),
+      rm('user_items',{'user_id':'eq.'+uid},true)
+    ]);
+    // Builds and teams next (their cascade deletes handle remaining likes + team_builds)
+    await Promise.allSettled([
+      rm('builds',{'user_id':'eq.'+uid},true),
+      rm('teams',{'user_id':'eq.'+uid},true)
+    ]);
+    // Profile last
+    await rm('user_profiles',{'user_id':'eq.'+uid},true).catch(function(){});
+    // Revoke server-side session
+    await fetch(API+'/auth/v1/logout',{
+      method:'POST',
+      headers:{'apikey':ANON,'Authorization':'Bearer '+tk}
+    }).catch(function(){});
+    // Clear local state
+    clearSessionState();
+    allBuilds=[];allTeams=[];uDex={};uShinyDex={};uItems={};userProfile=null;
+    saveSession();
+    updAuth();renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();updProfileNavIcon();
+    toast('Account data deleted. Sorry to see you go.');
+  }catch(e){
+    toast(e.message||'Could not delete account','err');
+  }
+}
+
+// #SECTION: USERNAME MODAL (Drop F.3)
+// ═══════════════════════════════════════
+// Bottom-sheet modal for setting a username.
+// Triggered by edToggleShare / tmToggleShare when usr has no username.
+// onSuccess callback is called after a successful save.
+// ═══════════════════════════════════════
+
+var _unSuccessCb=null,_unTimer=null;
+
+function showUsernameModal(onSuccess){
+  _unSuccessCb=onSuccess||null;
+  var mod=document.getElementById('usernameMod');if(!mod)return;
+  var inp=document.getElementById('unInput');
+  var hint=document.getElementById('unHint');
+  var btn=document.getElementById('unSaveBtn');
+  var titleEl=mod.querySelector('.un-sheet-title');
+  var descEl=mod.querySelector('.un-sheet-desc');
+  var existing=userProfile&&userProfile.username?userProfile.username:'';
+  // Pre-fill for "change" flow
+  if(inp){inp.value=existing;inp.className='un-input'+(existing?' un-ok':'');}
+  if(hint){hint.className='un-hint'+(existing?' ok':'');hint.textContent=existing?'@'+existing+' — current username':'';}
+  if(btn){btn.disabled=true;btn.textContent='Set username';}
+  if(titleEl)titleEl.textContent=existing?'Change your username':'Choose your username';
+  if(descEl)descEl.textContent=existing?'Pick a new username. Your current links will continue to work.':'You need a username before sharing publicly. This is how other trainers will see you across Champions Forge.';
+  mod.classList.add('open');
+  setTimeout(function(){if(inp){inp.focus();inp.select();}},120);
+}
+
+function closeUsernameModal(){
+  var mod=document.getElementById('usernameMod');
+  if(mod)mod.classList.remove('open');
+  _unSuccessCb=null;
+  if(_unTimer){clearTimeout(_unTimer);_unTimer=null;}
+}
+
+function unCheckAvailability(el){
+  if(_unTimer)clearTimeout(_unTimer);
+  var v=el.value.trim();
+  var hint=document.getElementById('unHint');
+  var btn=document.getElementById('unSaveBtn');
+  el.classList.remove('un-ok','un-err');
+  if(hint){hint.className='un-hint';hint.textContent='';}
+  if(btn)btn.disabled=true;
+  if(!v)return;
+  if(!/^[a-zA-Z0-9_-]{3,20}$/.test(v)){
+    el.classList.add('un-err');
+    if(hint){hint.className='un-hint err';hint.textContent='3–20 characters, letters numbers _ -';}
+    return;
+  }
+  if(hint){hint.className='un-hint neutral';hint.textContent='Checking…';}
+  _unTimer=setTimeout(async function(){
+    try{
+      // Exclude current user so editing back to their own username shows "available"
+      var qParams={'username':'ilike.'+v.toLowerCase(),select:'id'};
+      if(usr)qParams['user_id']='neq.'+usr.id;
+      var rows=await q('user_profiles',qParams,false);
+      if(rows&&rows.length>0){
+        el.classList.add('un-err');
+        if(hint){hint.className='un-hint err';hint.textContent='@'+v+' is taken';}
+      }else{
+        el.classList.add('un-ok');
+        if(hint){hint.className='un-hint ok';hint.textContent='@'+v+' is available';}
+        if(btn)btn.disabled=false;
+      }
+    }catch(e){
+      if(hint){hint.className='un-hint neutral';hint.textContent='Could not check availability';}
+    }
+  },450);
+}
+
+async function unSave(){
+  var inp=document.getElementById('unInput');
+  var btn=document.getElementById('unSaveBtn');
+  if(!inp||!usr||!userProfile)return;
+  var v=inp.value.trim().toLowerCase();
+  if(!v||!/^[a-zA-Z0-9_-]{3,20}$/.test(v))return;
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await upd('user_profiles',{'user_id':'eq.'+usr.id},{username:v},true);
+    userProfile.username=v;
+    toast('Username set to @'+v+' ✨');
+    closeUsernameModal();
+    if(_unSuccessCb){var cb=_unSuccessCb;_unSuccessCb=null;cb();}
+  }catch(e){
+    toast(e.message||'Failed to save username','err');
+    btn.disabled=false;btn.textContent='Set username';
+  }
 }
