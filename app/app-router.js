@@ -1366,10 +1366,8 @@ async function shareImageClientSide(kind,id){
 // render) first, falls back to shareImageClientSide (html-to-image) on any failure.
 async function shareImage(kind,id){
   // Capture triggering button synchronously (BEFORE first await) for spinner feedback
-  var _btn=null;
-  try{var _ae=document.activeElement;_btn=_ae&&_ae.closest?(_ae.tagName==='BUTTON'?_ae:_ae.closest('button')):null}catch(_){}
-  function _startLoad(){if(_btn){_btn.disabled=true;_btn.dataset.sharing='1'}}
-  function _stopLoad(){if(_btn){_btn.disabled=false;delete _btn.dataset.sharing}}
+  function _startLoad(){document.body.classList.add('share-loading')}
+  function _stopLoad(){document.body.classList.remove('share-loading')}
 
   var EDGE=API+'/functions/v1/share-image';
   var t0=performance.now();
