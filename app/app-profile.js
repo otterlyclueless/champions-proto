@@ -277,8 +277,52 @@ if(!usr){
   acts.sort(function(a,b){return new Date(b.time)-new Date(a.time)});
   actHtml+=acts.slice(0,8).map(function(a){var d=new Date(a.time);var ds=d.toLocaleDateString('en-GB',{day:'numeric',month:'short'});return'<div class="act-item">'+(a.img?'<img src="'+a.img+'" onerror="this.style.display=\'none\'">':'<div style="width:36px;height:36px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0">🏆</div>')+'<span class="act-text">'+a.text+'</span><span class="act-time">'+ds+'</span></div>'}).join('')||'<div style="color:var(--muted);font-size:.85rem">No activity yet</div>';
   actHtml+='</div>';
-  c.innerHTML=card+achHtml+actHtml;
+  var accountHtml=
+    '<div class="prof-account-section">'+
+      '<h3 style="font-size:1.05rem;font-weight:700;margin-top:1.5rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem">⚙️ Account</h3>'+
+      '<div class="prof-account-btns">'+
+        '<button class="btn btn-ghost prof-signout-btn" onclick="logout()"><i class="ph-bold ph-sign-out"></i> Sign Out</button>'+
+        '<button class="btn prof-delete-btn" onclick="confirmDeleteAccount()"><i class="ph-bold ph-trash"></i> Delete Account</button>'+
+      '</div>'+
+      '<p class="prof-delete-hint">Deleting your account permanently removes all your builds, teams, and Pokédex progress.</p>'+
+    '</div>';
+  c.innerHTML=card+achHtml+actHtml+accountHtml;
 updProfileNavIcon()
+}
+
+// #SECTION: ACCOUNT ACTIONS (Drop F.3)
+// ═══════════════════════════════════════
+
+function confirmDeleteAccount(){
+  resetConfirmMod();
+  document.getElementById('cmEmoji').textContent='⚠️';
+  document.getElementById('cmTitle').textContent='Delete Account?';
+  document.getElementById('cmMsg').textContent='This permanently deletes your account, all builds, teams, and Pokédex progress. This cannot be undone.';
+  var btn=document.getElementById('cmBtn');
+  btn.textContent='Yes, delete everything';
+  btn.className='btn btn-red';
+  btn.onclick=function(){deleteAccount();};
+  document.getElementById('confirmMod').classList.add('open');
+}
+
+async function deleteAccount(){
+  closeCm();
+  toast('Deleting account…','info');
+  try{
+    var r=await fetch(API+'/auth/v1/user',{
+      method:'DELETE',
+      headers:{'apikey':ANON,'Authorization':'Bearer '+tk}
+    });
+    if(!r.ok){var d=await r.json().catch(function(){return{}});throw new Error(d.message||d.error_description||r.status);}
+    // Clear all local state and sign out
+    clearSessionState();
+    allBuilds=[];allTeams=[];uDex={};uShinyDex={};uItems={};userProfile=null;
+    saveSession();
+    updAuth();renderDash();renderDex();renderItems();renderBuilds();renderTeams();renderProfile();updProfileNavIcon();
+    toast('Account deleted. Sorry to see you go.');
+  }catch(e){
+    toast(e.message||'Could not delete account','err');
+  }
 }
 
 // #SECTION: USERNAME MODAL (Drop F.3)
