@@ -1909,9 +1909,15 @@ body.pub-route:not(.pub-route-authed) .main{margin-left:0 !important}
 
 /* #SECTION: DROP F.2.1b — Share button loading spinner */
 @keyframes share-spin{to{transform:rotate(360deg)}}
-/* Applied when shareImage() is in-flight — button captured via document.activeElement */
-button[data-sharing]{opacity:.65!important;pointer-events:none!important}
-button[data-sharing]::after{
+/* body.share-loading added by shareImage() — targets all three share button types */
+body.share-loading .ed-share-share-btn,
+body.share-loading [onclick="bdPillShare()"],
+body.share-loading [onclick="tdPillShare()"]{
+  opacity:.6!important;pointer-events:none!important;
+}
+body.share-loading .ed-share-share-btn::after,
+body.share-loading [onclick="bdPillShare()"]::after,
+body.share-loading [onclick="tdPillShare()"]::after{
   content:'';display:inline-block;width:11px;height:11px;flex-shrink:0;
   border:2px solid rgba(255,255,255,.28);border-top-color:#fff;
   border-radius:50%;animation:share-spin .6s linear infinite;
