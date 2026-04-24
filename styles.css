@@ -542,38 +542,6 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;t
 .abl-pk-desc{font-size:.71rem;color:var(--muted);margin-top:.15rem;line-height:1.35}
 .abl-pk-empty{padding:1.5rem 1rem;text-align:center;color:var(--muted);font-size:.82rem;line-height:1.5}
 
-/* ── Drop H: Nature picker sheet (nat-pk-*) ── */
-.nat-pk-sheet{width:100%;max-width:560px;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border);display:flex;flex-direction:column;max-height:75vh;animation:sheetUp .28s cubic-bezier(.33,1,.68,1);transition:background .3s}
-.nat-pk-handle{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:10px auto 0;flex-shrink:0}
-.nat-pk-head{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.2rem .55rem;border-bottom:1px solid var(--border);flex-shrink:0}
-.nat-pk-title{font-size:.9rem;font-weight:800;color:var(--text)}
-.nat-pk-close{background:var(--surface);border:none;color:var(--muted);width:28px;height:28px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.73rem;font-weight:800;font-family:inherit;flex-shrink:0}
-.nat-pk-list{overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;padding-bottom:calc(.5rem + env(safe-area-inset-bottom))}
-.nat-pk-grp{font-size:.67rem;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:.8rem 1rem .3rem;display:flex;align-items:center;gap:.35rem}
-.nat-pk-none{display:flex;align-items:center;padding:.6rem 1rem;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s;-webkit-tap-highlight-color:transparent}
-.nat-pk-none:active,.nat-pk-none:hover{background:var(--surface2)}
-.nat-pk-none-lbl{font-size:.83rem;color:var(--muted);font-style:italic}
-.nat-pk-row{display:flex;align-items:center;justify-content:space-between;padding:.45rem 1rem;gap:.75rem;cursor:pointer;transition:background .1s;-webkit-tap-highlight-color:transparent}
-.nat-pk-row:active,.nat-pk-row:hover{background:var(--surface2)}
-.nat-pk-row.sel{background:var(--red-bg);border-left:2.5px solid var(--red)}
-.nat-pk-row-left{flex:1;min-width:0}
-.nat-pk-row-name{font-size:.85rem;font-weight:800;color:var(--text);line-height:1.15}
-.nat-pk-row.sel .nat-pk-row-name::after{content:' ✓';color:var(--red);font-size:.7rem}
-.nat-pk-row-arch{font-size:.67rem;color:var(--muted);margin-top:2px}
-.nat-pk-row-eq{flex-shrink:0;width:52px}
-.nat-pk-row-eq .eq-track{height:20px}
-.nat-pk-row-eq .eq-lbl{font-size:.55rem;margin-top:2px}
-/* ── Drop H: Nature picker button in build editor (ed-nat-*) ── */
-.ed-nat-btn{width:100%;padding:.6rem .9rem;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.6rem;min-height:44px;transition:border-color .15s,box-shadow .15s;text-align:left;-webkit-tap-highlight-color:transparent}
-.ed-nat-btn:hover{border-color:var(--border2)}
-.ed-nat-btn:active{border-color:var(--red);box-shadow:0 0 0 3px var(--red-bg)}
-.ed-nat-btn-left{flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;overflow:hidden}
-.ed-nat-btn-name{font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ed-nat-btn.empty .ed-nat-btn-name{color:var(--muted);font-weight:500}
-.ed-nat-btn-chips{display:flex;gap:3px;align-items:center;flex-shrink:0}
-.ed-nat-btn-chip{font-size:.68rem;font-weight:800;padding:.1rem .35rem;border-radius:5px;white-space:nowrap}
-.ed-nat-btn i{color:var(--muted);font-size:.8rem;flex-shrink:0;margin-left:auto}
-
 /* Ability detail panel content (inside shared #detInner) */
 .abl-det-hero{display:flex;align-items:center;gap:.85rem;padding:1rem 1.2rem .85rem}
 .abl-det-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.35rem;flex-shrink:0}
@@ -636,6 +604,13 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;t
 .ach-info .ach-desc{font-size:.72rem;color:var(--muted);margin-top:2px;line-height:1.3}
 .ach-info .ach-date{font-size:.62rem;color:var(--gold);margin-top:4px;font-weight:600}
 .ach-info .ach-cat{font-size:.58rem;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+/* Drop I.1: achievement category header + progress bar */
+.ach-cat-hdr{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:0}
+.ach-card.unlocked{border-width:1.5px}
+.ach-prog{margin-top:5px;display:flex;align-items:center;gap:.45rem}
+.ach-prog-bar-track{flex:1;height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.ach-prog-bar{height:100%;border-radius:2px;transition:width .3s}
+.ach-prog-txt{font-size:.6rem;color:var(--muted);font-weight:700;white-space:nowrap;flex-shrink:0}
 
 .activity-list{margin-top:1rem}
 .act-item{display:flex;align-items:center;gap:.7rem;padding:.6rem .8rem;border-radius:10px;background:var(--surface);border:1px solid var(--border);margin-bottom:.4rem}
