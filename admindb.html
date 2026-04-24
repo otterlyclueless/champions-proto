@@ -467,6 +467,7 @@ function renderTabs() {
     { key:'abilities', label:'Abilities', count: state.counts.abilities?.total - state.counts.abilities?.verified },
     { key:'items', label:'Items', count: state.counts.items?.total - state.counts.items?.verified },
     { key:'pokemon', label:'Stats', count: state.counts.pokemon?.total - state.counts.pokemon?.verified },
+    { key:'pkmn-abl', label:'Pkmn Abl', count: '' },
   ];
   document.getElementById('tabs').innerHTML = tabs.map(t =>
     `<button class="tab ${state.tab===t.key?'active':''}" onclick="switchTab('${t.key}')">
@@ -477,7 +478,9 @@ function renderTabs() {
 
 function switchTab(key) {
   state.tab = key; state.page = 0;
-  renderTabs(); renderFilters(); renderContent();
+  renderTabs(); renderFilters();
+  if (key === 'pkmn-abl') { renderPkmnAblTab(); return; }
+  renderContent();
 }
 
 function renderFilters() {
@@ -965,6 +968,125 @@ async function saveLearnsetChanges(){
     alert('Save failed: ' + (e.message || e));
     ed.busy = false;
     if(saveBtn){ saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+  }
+}
+
+// ── Pkmn Abl Tab — Drop G.2a ──
+// Manage pokemon_abilities junction table. Shows all Pokémon with their
+// current ability slots and allows corrections via dropdowns.
+let pkmnAblData = null; // {pokemon: [], pokemon_abilities: [], abilities: []}
+let pkmnAblSearch = '';
+let pkmnAblEditing = {}; // pokemonId → {slot1: abl_id, slot2: abl_id, hidden: abl_id}
+
+async function loadPkmnAblData() {
+  const [paRes, allPRes] = await Promise.all([
+    sb.from('pokemon_abilities').select('id,pokemon_id,ability_id,slot').order('pokemon_id'),
+    sb.from('pokemon').select('id,name,dex_number').order('name'),
+  ]);
+  pkmnAblData = {
+    pokemon: allPRes.data || [],
+    pokemon_abilities: paRes.data || [],
+    abilities: state.data.abilities || [],
+  };
+}
+
+function renderPkmnAblTab() {
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading"><div class="spinner"></div><br>Loading ability data…</div>';
+  document.getElementById('pagination').style.display = 'none';
+  document.getElementById('filters').innerHTML = `
+    <div class="filter-pills" style="flex-wrap:nowrap">
+      <input type="search" placeholder="Search Pokémon…" value="${pkmnAblSearch}"
+        oninput="pkmnAblSearch=this.value;renderPkmnAblList()" style="flex:1;min-width:180px">
+    </div>`;
+  if (pkmnAblData) { renderPkmnAblList(); return; }
+  loadPkmnAblData().then(() => renderPkmnAblList()).catch(e => {
+    content.innerHTML = '<div class="empty">Failed to load: ' + e.message + '</div>';
+  });
+}
+
+function renderPkmnAblList() {
+  const content = document.getElementById('content');
+  if (!pkmnAblData) return;
+  const q = pkmnAblSearch.toLowerCase();
+  const pokemon = pkmnAblData.pokemon.filter(p => !q || p.name.toLowerCase().includes(q));
+  // Index pokemon_abilities by pokemon_id
+  const paMap = {};
+  pkmnAblData.pokemon_abilities.forEach(pa => {
+    if (!paMap[pa.pokemon_id]) paMap[pa.pokemon_id] = {};
+    paMap[pa.pokemon_id][pa.slot] = pa;
+  });
+  const ablOptions = pkmnAblData.abilities.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+  const SLOTS = [{key:'1',label:'Ability 1'},{key:'2',label:'Ability 2'},{key:'hidden',label:'Hidden'}];
+  content.innerHTML = `<div class="card-list">${pokemon.map(p => {
+    const slots = paMap[p.id] || {};
+    const slotHtml = SLOTS.map(s => {
+      const pa = slots[s.key];
+      return `<div class="stat-group" style="flex-direction:column;align-items:flex-start;gap:3px">
+        <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase">${s.label}</label>
+        <select style="padding:5px 8px;border-radius:8px;border:1px solid var(--border-2);background:var(--bg);color:var(--text);font-family:inherit;font-size:.78rem;width:100%;cursor:pointer"
+          onchange="pkmnAblSetSlot('${p.id}','${s.key}',this.value)">
+          <option value="">— none —</option>
+          ${pkmnAblData.abilities.map(a => `<option value="${a.id}"${pa&&pa.ability_id===a.id?' selected':''}>${a.name}</option>`).join('')}
+        </select>
+      </div>`;
+    }).join('');
+    const hasData = Object.keys(slots).length > 0;
+    return `<div class="entry-card ${hasData?'verified':'unverified'}" id="pkmn-abl-${p.id}">
+      <div class="card-header">
+        <span class="card-name">${p.name}</span>
+        <div class="card-badges">
+          <span class="badge ${hasData?'badge-verified':'badge-unverified'}">${hasData?Object.keys(slots).length+' slots':'No data'}</span>
+        </div>
+      </div>
+      <div class="card-stats" style="flex-direction:column;gap:8px;margin:8px 0">
+        ${slotHtml}
+      </div>
+      <div class="card-actions">
+        <span class="save-indicator" id="pkmn-abl-save-${p.id}"></span>
+        <button class="btn btn-secondary btn-small" onclick="pkmnAblSave('${p.id}')">Save Abilities</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+async function pkmnAblSetSlot(pokemonId, slot, abilityId) {
+  if (!pkmnAblEditing[pokemonId]) pkmnAblEditing[pokemonId] = {};
+  pkmnAblEditing[pokemonId][slot] = abilityId;
+}
+
+async function pkmnAblSave(pokemonId) {
+  const ind = document.getElementById('pkmn-abl-save-' + pokemonId);
+  if (ind) { ind.textContent = 'Saving…'; ind.style.color = 'var(--amber)'; }
+  const edits = pkmnAblEditing[pokemonId] || {};
+  const SLOTS = ['1','2','hidden'];
+  // Re-read current selects from DOM
+  const card = document.getElementById('pkmn-abl-' + pokemonId);
+  if (card) {
+    const selects = card.querySelectorAll('select');
+    selects.forEach((sel, i) => { if (SLOTS[i]) edits[SLOTS[i]] = sel.value; });
+  }
+  try {
+    for (const slot of SLOTS) {
+      const abilityId = edits[slot];
+      // Find existing row
+      const existing = pkmnAblData.pokemon_abilities.find(pa => pa.pokemon_id === pokemonId && pa.slot === slot);
+      if (abilityId) {
+        if (existing) {
+          await sb.from('pokemon_abilities').update({ability_id: abilityId}).eq('id', existing.id);
+          existing.ability_id = abilityId;
+        } else {
+          const {data, error} = await sb.from('pokemon_abilities').insert({pokemon_id: pokemonId, ability_id: abilityId, slot}).select().single();
+          if (!error && data) pkmnAblData.pokemon_abilities.push(data);
+        }
+      } else if (existing) {
+        await sb.from('pokemon_abilities').delete().eq('id', existing.id);
+        pkmnAblData.pokemon_abilities = pkmnAblData.pokemon_abilities.filter(pa => pa.id !== existing.id);
+      }
+    }
+    if (ind) { ind.textContent = 'Saved!'; ind.style.color = 'var(--green)'; setTimeout(() => { ind.textContent = ''; }, 2500); }
+  } catch(e) {
+    if (ind) { ind.textContent = 'Error: ' + e.message; ind.style.color = 'var(--accent)'; }
   }
 }
 

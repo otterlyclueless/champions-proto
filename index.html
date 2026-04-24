@@ -106,9 +106,19 @@
     </div>
     <!-- Abilities pane -->
     <div class="ref-pane" id="refAbilitiesPane">
-      <div class="ref-search-block">
+      <!-- Mode toggle: Abilities | By Pokémon — Drop G.2 -->
+      <div class="ref-mode-bar">
+        <button class="ref-mode-btn active" data-mode="abilities" onclick="switchAblMode('abilities')"><i class="ph-bold ph-lightning"></i> Abilities</button>
+        <button class="ref-mode-btn" data-mode="pkmn" onclick="switchAblMode('pkmn')"><i class="ph-bold ph-paw-print"></i> By Pokémon</button>
+      </div>
+      <!-- Abilities search + filter pills (mode=abilities) -->
+      <div class="ref-search-block" id="ablSearchBlock">
         <input class="search-box" id="ablSearch" placeholder="Search abilities…" oninput="onAblSearch(this.value)">
         <div class="ref-filter-row" id="ablFilterRow"></div>
+      </div>
+      <!-- Pokémon search (mode=pkmn, hidden by default) -->
+      <div class="ref-search-block" id="ablPkmnBlock" style="display:none">
+        <input class="search-box" id="ablPkmnSearch" placeholder="Search Pokémon…" oninput="onPkmnAblSearch(this.value)">
       </div>
       <div class="abl-list" id="ablList"><div class="empty"><div class="em">⏳</div>Loading…</div></div>
     </div>
@@ -135,6 +145,9 @@
 
   <!-- Move Picker (Drop E) — full-screen sheet populated by renderMovePickerShell() -->
   <div class="picker-ov" id="movePickerOv"></div>
+
+  <!-- Ability Picker (Drop G.2b) — bottom sheet for build editor; populated by openAbilityPicker() -->
+  <div class="picker-ov" id="abilityPickerOv" style="align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)"></div>
 
   <!-- More Sheet (mobile overflow nav) -->
   <div class="more-sheet-ov" id="moreSheetOv">
