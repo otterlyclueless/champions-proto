@@ -645,6 +645,17 @@ async function checkAchievements(){
   var hasFull=allTeams.some(function(t){return(t.members||[]).length>=6});
   var hasMax=allBuilds.some(function(b){return b.hp_sp>=32||b.atk_sp>=32||b.def_sp>=32||b.spa_sp>=32||b.spd_sp>=32||b.spe_sp>=32});
   var hasFullSp=allBuilds.some(function(b){return(b.total_sp||0)>=66});
+  // Drop I.1: new check_type computed values (all derived from already-loaded allBuilds/allPkmn)
+  var fullMovesetC=allBuilds.filter(function(b){return b.move_1&&b.move_2&&b.move_3&&b.move_4}).length;
+  var natBuildsC=allBuilds.filter(function(b){return b.nature_id}).length;
+  var doublesC=allBuilds.filter(function(b){return b.battle_format==='Doubles'}).length;
+  var winConC=allBuilds.filter(function(b){return b.win_condition}).length;
+  var strategicC=allBuilds.filter(function(b){return b.win_condition&&b.strengths&&b.weaknesses}).length;
+  var publicBlC=allBuilds.filter(function(b){return b.is_public}).length;
+  var hasBothFormats=allBuilds.some(function(b){return b.battle_format==='Singles'})&&allBuilds.some(function(b){return b.battle_format==='Doubles'});
+  var hasMegaBuild=allBuilds.some(function(b){var p=allPkmn.find(function(x){return x.id===b.pokemon_id});return p&&p.form==='Mega'});
+  var _btSet=new Set(allBuilds.map(function(b){var p=allPkmn.find(function(x){return x.id===b.pokemon_id});return p?p.type_1:null}).filter(Boolean));
+  var buildTypeVariety=_btSet.size;
   var newUnlocks=[];
   // Achievement rules are data-driven: each row supplies a `check_type` and threshold to evaluate here.
   for(var i=0;i<allAch.length;i++){
@@ -658,6 +669,16 @@ async function checkAchievements(){
     else if(a.check_type==='full_team')earned=hasFull;
     else if(a.check_type==='max_stat')earned=hasMax;
     else if(a.check_type==='full_sp')earned=hasFullSp;
+    // Drop I.1 check_types
+    else if(a.check_type==='full_moveset_count')earned=fullMovesetC>=a.threshold;
+    else if(a.check_type==='nature_builds_count')earned=natBuildsC>=a.threshold;
+    else if(a.check_type==='doubles_builds')earned=doublesC>=a.threshold;
+    else if(a.check_type==='win_condition_count')earned=winConC>=a.threshold;
+    else if(a.check_type==='strategic_builds')earned=strategicC>=a.threshold;
+    else if(a.check_type==='public_builds_count')earned=publicBlC>=a.threshold;
+    else if(a.check_type==='both_formats')earned=hasBothFormats;
+    else if(a.check_type==='mega_builds')earned=hasMegaBuild;
+    else if(a.check_type==='build_type_variety')earned=buildTypeVariety>=a.threshold;
     if(earned){
       try{var u2=new URL(API+'/rest/v1/user_achievements');u2.searchParams.set('on_conflict','user_id,achievement_id');
         await fetch(u2.toString(),{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation,resolution=merge-duplicates'}),body:JSON.stringify({user_id:usr.id,achievement_id:a.id})});
@@ -675,8 +696,19 @@ if(!usr){
   return
 }
   var dn=userProfile?userProfile.display_name||usr.email.split('@')[0]:usr.email.split('@')[0];
-  var obtC=Object.keys(uDex).length,shC=Object.keys(uShinyDex).length,blC=allBuilds.length,tmC=allTeams.length;
+  var obtC=Object.keys(uDex).length,shC=Object.keys(uShinyDex).length,blC=allBuilds.length,tmC=allTeams.length,itC=Object.keys(uItems).length;
   var achUnlocked=allAch.filter(function(a){return userAch[a.id]}).length;
+  // Drop I.1: progress values for achievement bars
+  var _achProg={
+    obtained_count:obtC, shiny_count:shC, builds_count:blC, teams_count:tmC, items_count:itC,
+    full_moveset_count:allBuilds.filter(function(b){return b.move_1&&b.move_2&&b.move_3&&b.move_4}).length,
+    nature_builds_count:allBuilds.filter(function(b){return b.nature_id}).length,
+    doubles_builds:allBuilds.filter(function(b){return b.battle_format==='Doubles'}).length,
+    win_condition_count:allBuilds.filter(function(b){return b.win_condition}).length,
+    strategic_builds:allBuilds.filter(function(b){return b.win_condition&&b.strengths&&b.weaknesses}).length,
+    public_builds_count:allBuilds.filter(function(b){return b.is_public}).length,
+    build_type_variety:new Set(allBuilds.map(function(b){var p=allPkmn.find(function(x){return x.id===b.pokemon_id});return p?p.type_1:null}).filter(Boolean)).size
+  };
   // Trainer Card
   var avHtml=userProfile&&userProfile.avatar_url?'<img src="'+userProfile.avatar_url+'" alt="Avatar">':'<img src="icons/logo.png" alt="PC" style="padding:4px">';
   var unDisplay=userProfile&&userProfile.username
@@ -685,15 +717,36 @@ if(!usr){
   var card='<input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatarFile(this)"><div class="trainer-card"><div class="tc-wm">'+pb(200)+'</div><div class="tc-top"><div class="tc-avatar" onclick="triggerAvatarUpload()">'+avHtml+'<div class="av-overlay">📷 Change</div></div><div class="tc-info"><div class="tc-label">Trainer</div><h2>'+dn+'</h2><div class="tc-email">'+usr.email+'</div><div class="name-edit"><input id="dnInput" value="'+dn+'" placeholder="Display name"><button onclick="saveDisplayName()">Save</button></div>'+unDisplay+'</div></div><div class="tc-stats"><div class="tc-stat"><div class="tc-sv" style="color:#22c55e">'+obtC+'</div><div class="tc-sl">Obtained</div></div><div class="tc-stat"><div class="tc-sv" style="color:#8b5cf6">'+shC+'</div><div class="tc-sl">Shinies</div></div><div class="tc-stat"><div class="tc-sv" style="color:#3b82f6">'+blC+'</div><div class="tc-sl">Builds</div></div><div class="tc-stat"><div class="tc-sv" style="color:#f59e0b">'+tmC+'</div><div class="tc-sl">Teams</div></div><div class="tc-stat"><div class="tc-sv" style="color:#ef4444">'+achUnlocked+'<span style="font-size:.8rem;opacity:.5">/'+allAch.length+'</span></div><div class="tc-sl">Achievements</div></div></div></div>';
   // Achievements
   var achHtml='<h3 style="font-size:1.05rem;font-weight:700;margin-top:1.5rem;display:flex;align-items:center;gap:.4rem">🏆 Achievements <span style="font-size:.78rem;color:var(--muted);font-weight:500">'+achUnlocked+' / '+allAch.length+' unlocked</span></h3>';
-  var catOrder=['collection','shiny','builds','teams','items'];
-  var catLabels={collection:'Collection',shiny:'Shiny',builds:'Builds',teams:'Teams',items:'Items'};
+  // Drop I.1: expanded categories + colours
+  var catOrder=['collection','shiny','builds','teams','items','milestones','moves','nature','competitive','explorer','social'];
+  var catLabels={collection:'Collection',shiny:'Shiny',builds:'Builds',teams:'Teams',items:'Items',milestones:'Milestones',moves:'Moves',nature:'Nature',competitive:'Competitive',explorer:'Explorer',social:'Social'};
+  var catColors={collection:'#22c55e',shiny:'#a78bfa',builds:'#f97316',teams:'#3b82f6',items:'#f59e0b',milestones:'#94a3b8',moves:'#ef4444',nature:'#14b8a6',competitive:'#6366f1',explorer:'#d97706',social:'#ec4899'};
+  // Boolean check_types that don't have a meaningful progress value
+  var _boolChecks={full_team:true,max_stat:true,full_sp:true,both_formats:true,mega_builds:true};
   achHtml+=catOrder.map(function(cat){
     var items=allAch.filter(function(a){return a.category===cat});if(!items.length)return'';
-    return'<div style="margin-top:1rem"><span style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">'+catLabels[cat]+'</span><div class="ach-grid">'+items.map(function(a){
-      var unlocked=!!userAch[a.id];var dt=unlocked?new Date(userAch[a.id]):null;
-      var dateStr=dt?dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
-      return'<div class="ach-card '+(unlocked?'unlocked':'locked')+'"><div class="ach-icon">'+a.icon+'</div><div class="ach-info"><div class="ach-name">'+a.name+'</div><div class="ach-desc">'+a.description+'</div>'+(unlocked?'<div class="ach-date">Unlocked '+dateStr+'</div>':'')+'</div></div>'
-    }).join('')+'</div></div>'
+    var cc=catColors[cat]||'var(--muted)';
+    return'<div style="margin-top:1rem">'+
+      '<span class="ach-cat-hdr" style="color:'+cc+'">'+catLabels[cat]+'</span>'+
+      '<div class="ach-grid">'+items.map(function(a){
+        var unlocked=!!userAch[a.id];
+        var dt=unlocked?new Date(userAch[a.id]):null;
+        var dateStr=dt?dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+        // Progress bar for locked threshold achievements
+        var progHtml='';
+        if(!unlocked&&!_boolChecks[a.check_type]&&_achProg[a.check_type]!==undefined&&a.threshold>1){
+          var cur=Math.min(_achProg[a.check_type],a.threshold);
+          var pct=Math.round(cur/a.threshold*100);
+          progHtml='<div class="ach-prog"><div class="ach-prog-bar-track"><div class="ach-prog-bar" style="width:'+pct+'%;background:'+cc+'"></div></div><span class="ach-prog-txt">'+cur+' / '+a.threshold+'</span></div>';
+        }
+        return'<div class="ach-card '+(unlocked?'unlocked':'locked')+'" style="'+(unlocked?'border-color:'+cc+'22':'')+'">'+
+          '<div class="ach-icon">'+a.icon+'</div>'+
+          '<div class="ach-info">'+
+            '<div class="ach-name">'+a.name+'</div>'+
+            '<div class="ach-desc">'+a.description+'</div>'+
+            progHtml+
+            (unlocked?'<div class="ach-date">Unlocked '+dateStr+'</div>':'')+'</div></div>'
+      }).join('')+'</div></div>'
   }).join('');
   // Recent Activity
   var actHtml='<h3 style="font-size:1.05rem;font-weight:700;margin-top:1.5rem;display:flex;align-items:center;gap:.4rem">📝 Recent Activity</h3><div class="activity-list">';
