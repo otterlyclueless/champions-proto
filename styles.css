@@ -435,7 +435,7 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;t
 
 /* Tab bar */
 .ref-tab-bar{display:flex;border-bottom:1px solid var(--border);background:var(--bg);flex-shrink:0}
-.ref-tab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.32rem;padding:.6rem .5rem;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;border-bottom:2.5px solid transparent;transition:color .18s,border-color .18s}
+.ref-tab{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:.38rem;padding:.8rem .5rem;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:.82rem;font-weight:700;cursor:pointer;border-bottom:2.5px solid transparent;transition:color .18s,border-color .18s}
 .ref-tab.active{color:var(--red);border-bottom-color:var(--red)}
 .ref-tab:hover:not(.active){color:var(--text2)}
 .ref-tab i{font-size:.88rem}
@@ -445,6 +445,17 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;t
 /* Scrollable panes */
 .ref-pane{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 .ref-pane::-webkit-scrollbar{width:0}
+
+/* Reference detail — bottom tray (replaces full-height #detP for ability/nature detail) */
+.ref-det-ov{position:fixed;inset:0;z-index:200;display:flex;align-items:flex-end;pointer-events:none;opacity:0;transition:opacity .25s}
+.ref-det-ov.open{pointer-events:all;opacity:1}
+.ref-det-bd{position:absolute;inset:0;background:rgba(0,0,0,.52);backdrop-filter:blur(2px)}
+.ref-det-sheet{position:relative;z-index:1;width:100%;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border);max-height:65vh;overflow-y:auto;transform:translateY(100%);transition:transform .32s cubic-bezier(.33,1,.68,1);padding-bottom:calc(1rem + env(safe-area-inset-bottom,0px));transition:background .3s,transform .32s cubic-bezier(.33,1,.68,1)}
+.ref-det-sheet::-webkit-scrollbar{width:0}
+.ref-det-ov.open .ref-det-sheet{transform:translateY(0)}
+.ref-det-handle{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:10px auto 0}
+.ref-det-close{position:absolute;top:12px;right:14px;width:27px;height:27px;border-radius:50%;background:var(--surface);border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.73rem;font-weight:800;transition:background .15s}
+.ref-det-close:hover{background:var(--surface2)}
 
 /* Search + filter block (sticky top of each pane) */
 .ref-search-block{padding:.55rem 2rem .4rem;border-bottom:1px solid var(--border);background:var(--bg);position:sticky;top:0;z-index:10}
