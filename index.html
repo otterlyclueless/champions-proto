@@ -183,6 +183,16 @@
 <!-- Detail Panel -->
 <div class="panel-ov" id="detP"><div class="panel-bd" onclick="closeDet()"></div><div class="panel-ct slide-in" id="detInner"></div></div>
 
+  <!-- Reference detail bottom tray — Drop G (ability + nature detail, replaces full slide-over for Reference tab) -->
+  <div class="ref-det-ov" id="refDetOv">
+    <div class="ref-det-bd" onclick="closeRefDet()"></div>
+    <div class="ref-det-sheet">
+      <div class="ref-det-handle"></div>
+      <button class="ref-det-close" onclick="closeRefDet()">✕</button>
+      <div id="refDetInner"></div>
+    </div>
+  </div>
+
 <div class="toast-c" id="toasts"></div>
 
 <!-- Drop F.2.1: off-screen render host for shareable image cards (1200×630 PNG via html2canvas) -->
