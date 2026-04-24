@@ -945,8 +945,12 @@ async function ffRenderList(term){
   if(!term){el.innerHTML='<div class="ff-empty">Type a @username or name to search</div>';return;}
   el.innerHTML='<div class="ff-empty">Searching…</div>';
   try{
-    // Use q() with proven ilike pattern (same as username availability check in username modal)
-    var results=await q('user_profiles',{'username':'ilike.*'+term+'*','select':'user_id,display_name,username,avatar_url','limit':'10'},false);
+    // Authenticated search — new "Authenticated users can search profiles" RLS policy (Drop I.2)
+    // Use authFetch + string URL to avoid URLSearchParams encoding the * wildcards
+    var results=await authFetch(
+      API+'/rest/v1/user_profiles?username=ilike.*'+encodeURIComponent(term)+'*&select=user_id,display_name,username,avatar_url&limit=10',
+      {headers:h(true)},true
+    ).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()});
     if(!results||results.error){el.innerHTML='<div class="ff-empty">Search failed</div>';return;}
     results=results.filter(function(p){return p.user_id!==usr.id;});
     if(!results.length){el.innerHTML='<div class="ff-empty">No trainers found for "'+term+'"</div>';return;}
