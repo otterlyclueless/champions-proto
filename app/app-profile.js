@@ -913,52 +913,28 @@ function ffSwitchTab(tab){
 function _ffRenderShare(){
   if(_ffQrDone)return;_ffQrDone=true;
   var username=userProfile&&userProfile.username;
+  var spin=document.getElementById('ffQrSpinner');
   if(!username){
-    var qw=document.getElementById('ffQrSpinner');
-    if(qw)qw.innerHTML='<a href="#" onclick="showUsernameModal(null);closeFindFriends()" style="color:var(--pink);font-size:.8rem">Set a username first →</a>';
+    if(spin)spin.innerHTML='<a href="#" onclick="showUsernameModal(null);closeFindFriends()" style="color:var(--pink);font-size:.8rem">Set a username first →</a>';
     return;
   }
-  var url=location.origin+location.pathname.replace(/\/index\.html$/,'/')+'#/u/'+encodeURIComponent(username);
-  var lt=document.getElementById('ffLinkTxt');if(lt)lt.textContent=url;
-  function _showQr(dataUrl){
-    var img=document.getElementById('ffQrImg');
-    var spin=document.getElementById('ffQrSpinner');
-    if(img){img.src=dataUrl;img.style.display='block';}
-    if(spin)spin.style.display='none';
+  var profileUrl=location.origin+location.pathname.replace(/\/index\.html$/,'/')+'#/u/'+encodeURIComponent(username);
+  var lt=document.getElementById('ffLinkTxt');if(lt)lt.textContent=profileUrl;
+  // Use qrserver.com API — plain img tag, zero JS library dependency
+  var qrApiUrl='https://api.qrserver.com/v1/create-qr-code/?data='+encodeURIComponent(profileUrl)+'&size=200x200&color=111318&bgcolor=FFFFFF&margin=6&qzone=1';
+  // If we already have the stored URL, use it; otherwise use the API URL directly
+  var src=userProfile&&userProfile.qr_code_url?userProfile.qr_code_url:qrApiUrl;
+  var img=document.getElementById('ffQrImg');
+  if(img){
+    img.onload=function(){if(spin)spin.style.display='none';img.style.display='block';};
+    img.onerror=function(){if(spin)spin.innerHTML='<span style="font-size:.7rem;color:var(--muted)">Use the Copy button below</span>';};
+    img.src=src;
+    // Persist the API URL so future opens skip even the API call (instant display from stored URL)
+    if(usr&&userProfile&&!userProfile.qr_code_url){
+      userProfile.qr_code_url=qrApiUrl;
+      upd('user_profiles',{'user_id':'eq.'+usr.id},{qr_code_url:qrApiUrl},true).catch(function(){});
+    }
   }
-  // If already stored in user record — instant display, no library needed
-  if(userProfile&&userProfile.qr_code_url){_showQr(userProfile.qr_code_url);return;}
-  // Otherwise generate, display, and save to DB for next time
-  _generateAndSaveQR(url).then(function(dataUrl){
-    if(dataUrl){_showQr(dataUrl);}
-    else{var s=document.getElementById('ffQrSpinner');if(s)s.innerHTML='<span style="font-size:.7rem">Use the Copy button below</span>';}
-  });
-}
-
-// Generate QR code as base64 PNG, save to user_profiles.qr_code_url, return the data URL.
-// Dynamically loads QRCode.js if not already present (handles SW-cached pages).
-function _generateAndSaveQR(url){
-  return new Promise(function(resolve){
-    function doGen(){
-      QRCode.toDataURL(url,{width:300,margin:2,color:{dark:'#111318',light:'#ffffff'}},function(err,dataUrl){
-        if(err||!dataUrl){resolve(null);return;}
-        resolve(dataUrl);
-        // Save to DB so it's instant on next open
-        if(usr&&userProfile){
-          upd('user_profiles',{'user_id':'eq.'+usr.id},{qr_code_url:dataUrl},true)
-            .then(function(){if(userProfile)userProfile.qr_code_url=dataUrl;})
-            .catch(function(){});
-        }
-      });
-    }
-    if(typeof QRCode!=='undefined'&&QRCode.toDataURL){doGen();}
-    else{
-      var s=document.createElement('script');
-      s.src='https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js';
-      s.onload=doGen;s.onerror=function(){resolve(null);};
-      document.head.appendChild(s);
-    }
-  });
 }
 function ffFilter(v){ffRenderList(v);}
 async function ffRenderList(term){
