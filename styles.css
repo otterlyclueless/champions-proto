@@ -491,13 +491,13 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;t
 
 /* Nature hybrid cards (new design) */
 .nat-hybrid-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.55rem;padding:.7rem 2rem 5rem}
-.nat-hybrid{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.65rem .7rem .6rem;cursor:pointer;transition:border-color .12s,transform .1s}
+.nat-hybrid{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.75rem .7rem .65rem;cursor:pointer;transition:border-color .12s,transform .1s}
 .nat-hybrid:hover{border-color:var(--border2)}
 .nat-hybrid:active{transform:scale(.97)}
 .nat-hybrid-name{font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:.35rem}
 .nat-hybrid-arch{display:inline-block;font-size:.61rem;font-weight:700;padding:2px 7px;border-radius:6px;margin-bottom:.42rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 /* EQ bar visualiser */
-.eq-bars{display:flex;align-items:flex-end;justify-content:space-between;gap:4px;height:28px}
+.eq-bars{display:flex;align-items:flex-end;justify-content:space-between;gap:4px}
 .eq-col{display:flex;flex-direction:column;align-items:center;gap:0;flex:1}
 .eq-track{width:100%;border-radius:3px 3px 0 0;overflow:hidden;display:flex;align-items:flex-end}
 .eq-fill{width:100%;border-radius:3px 3px 0 0}
