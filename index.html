@@ -19,6 +19,7 @@
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
 <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
 <nav class="sb" id="sb">
@@ -31,7 +32,7 @@
     <!-- Desktop-only items (hidden on mobile; accessed via More sheet there) -->
     <div class="sb-item sb-desktop" data-p="items"><div class="sb-icon"><i class="ph-bold ph-backpack"></i></div><span class="sb-label">Items</span><span class="sb-count" id="nc3">—</span></div>
     <div class="sb-item sb-desktop" data-p="reference"><div class="sb-icon"><i class="ph-bold ph-books"></i></div><span class="sb-label">Reference</span></div>
-    <div class="sb-item sb-desktop" data-p="profile"><div class="sb-icon sb-profile-icon" id="profileNavIcon"><i class="ph-bold ph-user-circle"></i></div><span class="sb-label">Profile</span></div>
+    <div class="sb-item sb-desktop" data-p="profile" style="position:relative"><div class="sb-icon sb-profile-icon" id="profileNavIcon"><i class="ph-bold ph-user-circle"></i></div><span class="sb-label">Profile</span><span class="fr-nav-badge" id="frNavBadge"></span></div>
     <!-- Mobile-only More button (opens sheet) -->
     <div class="sb-item sb-mobile" id="sbMore" onclick="openMoreSheet()"><div class="sb-icon"><i class="ph-bold ph-dots-three"></i></div><span class="sb-label">More</span></div>
   </div>
@@ -151,6 +152,9 @@
 
   <!-- Nature Picker (Drop H) — bottom sheet for build editor; populated by openNaturePicker() -->
   <div class="picker-ov" id="naturePickerOv" style="align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)"></div>
+
+  <!-- Find Friends (Drop I.2) — bottom sheet; populated by openFindFriends() -->
+  <div class="picker-ov" id="findFriendsOv" style="align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);backdrop-filter:blur(2px)"></div>
 
   <!-- More Sheet (mobile overflow nav) -->
   <div class="more-sheet-ov" id="moreSheetOv">
