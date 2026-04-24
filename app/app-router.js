@@ -556,15 +556,85 @@ async function renderPublicTeam(code){
 
 async function renderPublicProfile(username){
   var host=document.getElementById('pg-public');if(!host)return;
-  host.innerHTML=
-    '<div class="pub-brand"><div class="pub-brand-mark">⚡</div><span>Champions Forge</span></div>'+
-    '<div class="pub-wrap"><div class="pub-card">'+
-      '<div class="pub-404">👤</div>'+
-      '<div class="pub-name">@'+pubEscape(username)+'</div>'+
-      '<div class="pub-author" style="margin-bottom:0">Trainer profiles coming soon</div>'+
-      '<div class="pub-meta" style="margin-top:1rem"><span class="pub-meta-icon">🚧</span><span>Public trainer profiles arrive in a later drop. For now, this is just a placeholder.</span></div>'+
-    '</div></div>'+
-    pubCtaHtml();
+  host.innerHTML='<div class="pub-brand"><div class="pub-brand-mark">⚡</div><span>Champions Forge</span></div>'+
+    '<div class="pub-wrap"><div class="pub-loading">Loading @'+pubEscape(username)+'…</div></div>'+pubCtaHtml();
+  try{
+    var profiles=await fetch(API+'/rest/v1/user_profiles?username=eq.'+encodeURIComponent(username)+'&select=user_id,display_name,username,avatar_url',{headers:{'apikey':ANON}}).then(function(r){return r.json()});
+    if(!profiles||!profiles.length){
+      host.innerHTML='<div class="pub-brand"><div class="pub-brand-mark">⚡</div><span>Champions Forge</span></div>'+
+        '<div class="pub-wrap"><div class="pub-card"><div class="pub-404">👤</div><div class="pub-name">@'+pubEscape(username)+'</div><div class="pub-author">Trainer not found</div></div></div>'+pubCtaHtml();
+      return;
+    }
+    var profile=profiles[0];var uid=profile.user_id;
+    var builds=await fetch(API+'/rest/v1/build_details?user_id=eq.'+uid+'&is_public=eq.true&order=created_at.desc&limit=10',{headers:{'apikey':ANON}}).then(function(r){return r.json()}).catch(function(){return[];});
+    if(!Array.isArray(builds))builds=[];
+    var fs=typeof getFriendStatus==='function'&&usr?getFriendStatus(uid):{status:'none',rowId:null,iAmReq:false};
+    var isOwn=usr&&usr.id===uid;
+    var av=profile.avatar_url?'<img src="'+pubEscape(profile.avatar_url)+'" style="width:52px;height:52px;border-radius:14px;object-fit:cover" onerror="this.style.display=\'none\'">':'<span style="font-size:1.5rem">👤</span>';
+    var afBtn='';
+    if(usr&&!isOwn){
+      var afCls=fs.status==='accepted'?'pub-add-friend-btn friends':fs.status==='pending'?'pub-add-friend-btn pending':'pub-add-friend-btn';
+      var afTxt=fs.status==='accepted'?'✓ Friends':fs.status==='pending'&&fs.iAmReq?'⏳ Request Sent':fs.status==='pending'&&!fs.iAmReq?'Accept →':'Add Friend';
+      var afClick=fs.status==='accepted'?'':fs.status==='pending'&&!fs.iAmReq?'pubAcceptFriend(\''+fs.rowId+'\')':'pubSendFriendRequest(\''+uid+'\')';
+      afBtn='<button class="'+afCls+'" id="pubAfBtn" onclick="'+afClick+'">'+afTxt+'</button>';
+    }
+    var buildsHtml='';
+    if(builds.length){
+      buildsHtml='<div class="pub-section"><div class="pub-section-head">Public Builds</div>'+
+        builds.map(function(b){
+          var img=b.is_shiny&&b.shiny_url?b.shiny_url:(b.image_url||'');
+          return'<div class="pub-build-row" onclick="location.hash=\'#/b/'+pubEscape(b.share_code||'')+'\'">'+
+            (img?'<img class="pub-build-thumb" src="'+pubEscape(img)+'" onerror="this.style.opacity=.2">':'<div class="pub-build-thumb"></div>')+
+            '<div class="pub-build-info"><div class="pub-build-name">'+pubEscape(b.build_name||'Unnamed')+'</div><div class="pub-build-sub">'+pubEscape(b.type_1||'')+(b.type_2?' · '+pubEscape(b.type_2):'')+' · '+(b.battle_format||'Singles')+'</div></div>'+
+            '<span class="pub-chevron">›</span>'+
+          '</div>';
+        }).join('')+
+      '</div>';
+    }else{buildsHtml='<div class="pub-section" style="text-align:center;padding:1.5rem 0;color:var(--muted);font-size:.82rem">No public builds yet</div>';}
+    host.innerHTML=
+      '<div class="pub-brand"><div class="pub-brand-mark">⚡</div><span>Champions Forge</span></div>'+
+      '<div class="pub-wrap">'+
+        '<div class="pub-profile-header">'+
+          '<div class="pub-av-wrap">'+av+'</div>'+
+          '<div class="pub-profile-info">'+
+            '<div class="pub-name">'+pubEscape(profile.display_name||'Trainer')+'</div>'+
+            '<div class="pub-un-row">@'+pubEscape(profile.username||username)+'</div>'+
+            '<div style="font-size:.72rem;color:var(--muted);margin-top:3px">'+builds.length+' public build'+(builds.length!==1?'s':'')+'</div>'+
+          '</div>'+
+        '</div>'+
+        (afBtn?'<div class="pub-af-row">'+afBtn+'</div>':'')+
+        buildsHtml+
+      '</div>'+
+      pubCtaHtml();
+  }catch(e){
+    host.innerHTML='<div class="pub-brand"><div class="pub-brand-mark">⚡</div><span>Champions Forge</span></div>'+
+      '<div class="pub-wrap"><div class="pub-card"><div class="pub-404">⚠️</div><div class="pub-author">Failed to load profile</div></div></div>'+pubCtaHtml();
+  }
+}
+async function pubSendFriendRequest(toId){
+  if(!usr){showLoginModal('Sign in to add friends');return;}
+  var btn=document.getElementById('pubAfBtn');if(!btn)return;
+  btn.disabled=true;btn.textContent='Sending…';
+  try{
+    await authFetch(API+'/rest/v1/friends',{method:'POST',headers:Object.assign(h(true),{'Prefer':'return=representation'}),body:JSON.stringify({requester_id:usr.id,addressee_id:toId,status:'pending'})});
+    btn.className='pub-add-friend-btn pending';btn.textContent='⏳ Request Sent';btn.disabled=true;
+    if(typeof allFriends!=='undefined'&&!allFriends.find(function(f){return f.friend_id===toId;}))
+      allFriends.push({id:'local-'+Date.now(),friend_id:toId,status:'pending',i_am_requester:true,display_name:'',username:'',avatar_url:''});
+    toast('Friend request sent! 👥');
+  }catch(e){btn.disabled=false;btn.textContent='Add Friend';toast('Failed to send request','err');}
+}
+async function pubAcceptFriend(rowId){
+  if(!usr)return;
+  var btn=document.getElementById('pubAfBtn');if(!btn)return;
+  btn.disabled=true;
+  try{
+    await authFetch(API+'/rest/v1/friends?id=eq.'+rowId,{method:'PATCH',headers:Object.assign(h(true),{'Prefer':'return=minimal'}),body:JSON.stringify({status:'accepted'})});
+    var f=typeof allFriends!=='undefined'?allFriends.find(function(x){return x.id===rowId;}):null;
+    if(f)f.status='accepted';
+    btn.className='pub-add-friend-btn friends';btn.textContent='✓ Friends';
+    toast('Friend added! 👥');
+    if(typeof updProfileNavBadge==='function')updProfileNavBadge();
+  }catch(e){btn.disabled=false;toast('Could not accept','err');}
 }
 
 // ═══════════════════════════════════════
