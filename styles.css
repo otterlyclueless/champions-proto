@@ -2661,3 +2661,13 @@ body.share-loading [onclick="tdPillShare()"]::after{
   padding:.25rem 0;margin-top:.3rem;display:block;
 }
 .tc-un-set:hover{opacity:.8}
+/* Drop H — nature picker button in build editor (was missing from styles after I.1/I.2 overwrites) */
+.ed-nat-btn{width:100%;padding:.6rem .9rem;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:.6rem;min-height:44px;transition:border-color .15s,box-shadow .15s;text-align:left;-webkit-tap-highlight-color:transparent}
+.ed-nat-btn:hover{border-color:var(--border2)}
+.ed-nat-btn:active{border-color:var(--red);box-shadow:0 0 0 3px var(--red-bg)}
+.ed-nat-btn-left{flex:1;display:flex;align-items:center;gap:.5rem;min-width:0;overflow:hidden}
+.ed-nat-btn-name{font-size:.85rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed-nat-btn.empty .ed-nat-btn-name{color:var(--muted);font-weight:500}
+.ed-nat-btn-chips{display:flex;gap:3px;align-items:center;flex-shrink:0}
+.ed-nat-btn-chip{font-size:.68rem;font-weight:800;padding:.1rem .35rem;border-radius:5px;white-space:nowrap}
+.ed-nat-btn i{color:var(--muted);font-size:.8rem;flex-shrink:0;margin-left:auto}
