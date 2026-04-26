@@ -28,6 +28,9 @@ function _esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 
 // ── Navigation helper (unchanged) ────────────────────────
 function dashNav(page){
+  // Close home sheets on any navigation — prevents z-index 320 sheets covering modal-ov
+  var _no=document.getElementById('homeNotifOv');if(_no)_no.classList.remove('show');
+  var _so=document.getElementById('homeSearchOv');if(_so)_so.classList.remove('show');
   document.querySelectorAll('.sb-item').forEach(function(n){n.classList.remove('active')});
   var tgt=document.querySelector('[data-p='+page+']');if(tgt)tgt.classList.add('active');
   if(['items','natures','profile'].indexOf(page)!==-1){
