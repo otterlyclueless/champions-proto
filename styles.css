@@ -714,7 +714,7 @@ body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;t
 .act-item .act-text{font-size:.82rem;font-weight:500}.act-item .act-time{font-size:.68rem;color:var(--muted);margin-left:auto}
 
 /* Subsection: Confirm modal */
-.modal-ov{position:fixed;inset:0;z-index:300;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.4);backdrop-filter:blur(2px)}
+.modal-ov{position:fixed;inset:0;z-index:400;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.4);backdrop-filter:blur(2px)}
 .modal-ov.open{display:flex}
 .modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:1.5rem;max-width:380px;width:90%;text-align:center}
 .modal-box .em{font-size:2rem;margin-bottom:.5rem}
@@ -2671,6 +2671,27 @@ body.share-loading [onclick="tdPillShare()"]::after{
 .ed-nat-btn-chips{display:flex;gap:3px;align-items:center;flex-shrink:0}
 .ed-nat-btn-chip{font-size:.68rem;font-weight:800;padding:.1rem .35rem;border-radius:5px;white-space:nowrap}
 .ed-nat-btn i{color:var(--muted);font-size:.8rem;flex-shrink:0;margin-left:auto}
+/* Drop H — nature picker SHEET (was missing) */
+.nat-pk-sheet{background:var(--bg2);border-radius:20px 20px 0 0;width:100%;max-height:78vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -4px 30px rgba(0,0,0,.35)}
+.nat-pk-handle{padding:10px 0 4px;display:flex;justify-content:center;flex-shrink:0}
+.nat-pk-handle::before{content:'';width:32px;height:4px;background:var(--border2);border-radius:2px;display:block}
+.nat-pk-head{padding:2px 1rem 10px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid var(--border)}
+.nat-pk-title{font-size:1rem;font-weight:800;color:var(--text)}
+.nat-pk-close{width:28px;height:28px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:.78rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+.nat-pk-list{flex:1;overflow-y:auto;padding:.3rem 0 1rem}
+.nat-pk-list::-webkit-scrollbar{display:none}
+.nat-pk-none{display:flex;align-items:center;padding:.7rem 1rem;cursor:pointer;border-radius:10px;margin:.2rem .5rem;transition:background .12s;-webkit-tap-highlight-color:transparent}
+.nat-pk-none:active{background:var(--surface)}
+.nat-pk-none.sel{background:var(--surface);outline:1.5px solid var(--red)}
+.nat-pk-none-lbl{font-size:.85rem;font-weight:600;color:var(--muted);flex:1}
+.nat-pk-grp{font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;padding:.65rem 1rem .2rem;margin-top:.15rem}
+.nat-pk-row{display:flex;align-items:center;gap:.55rem;padding:.55rem 1rem;cursor:pointer;border-radius:10px;margin:0 .5rem .12rem;transition:background .12s;-webkit-tap-highlight-color:transparent}
+.nat-pk-row:active{background:var(--surface)}
+.nat-pk-row.sel{background:var(--surface);outline:1.5px solid var(--red)}
+.nat-pk-row-left{flex:1;min-width:0}
+.nat-pk-row-name{font-size:.85rem;font-weight:700;color:var(--text)}
+.nat-pk-row-arch{font-size:.62rem;color:var(--muted);margin-top:1px}
+.nat-pk-row-eq{flex-shrink:0;width:58px}
 
 /* ══════════════════════════════════════════════
    Drop I.3 — Home Feed
