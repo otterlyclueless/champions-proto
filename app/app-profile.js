@@ -724,7 +724,9 @@ async function checkAchievements(){
         userAch[a.id]=new Date().toISOString();newUnlocks.push(a)}catch(e){}
     }
   }
-  if(newUnlocks.length){newUnlocks.forEach(function(a){toast('🏆 Achievement: '+a.name+'!')});renderProfile()}
+  if(newUnlocks.length){newUnlocks.forEach(function(a){toast('🏆 Achievement: '+a.name+'!')});}
+  // Always re-render after async check so social progress bars (likes_received_count) reflect live data
+  renderProfile();
 }
 
 function renderProfile(){
