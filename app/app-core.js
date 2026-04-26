@@ -258,6 +258,9 @@ document.querySelectorAll('.sb-item').forEach(function(i){
   return;
 }
 
+    // Close home sheets on sidebar nav (fixes z-index issue blocking confirm modal)
+    var _no=document.getElementById('homeNotifOv');if(_no)_no.classList.remove('show');
+    var _so=document.getElementById('homeSearchOv');if(_so)_so.classList.remove('show');
     document.querySelectorAll('.sb-item').forEach(function(n){n.classList.remove('active')});
     i.classList.add('active');
     document.querySelectorAll('.page').forEach(function(p){p.classList.remove('show')});
