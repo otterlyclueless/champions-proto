@@ -267,7 +267,7 @@ function renderBuilds(){
           '</div>'+
         '</div>'+
       '</div>'+
-      '<div class="bld-tags">'+(b.battle_format?'<span class="btag btag-fmt">'+b.battle_format+'</span>':'')+(b.archetype?'<span class="btag btag-arch">'+b.archetype+'</span>':'')+(b.item_name?'<span class="btag btag-item">'+b.item_name+'</span>':'')+(b.nature_name?'<span class="btag btag-nat">'+b.nature_name+'</span>':'')+(b.ability?'<span class="btag btag-abi">'+b.ability+'</span>':'')+bldMoveWarnPill(b)+'</div>'+
+      '<div class="bld-tags">'+(b.battle_format?'<span class="btag btag-fmt">'+b.battle_format+'</span>':'')+(b.archetype?'<span class="btag btag-arch">'+b.archetype+'</span>':'')+(b.item_name?'<span class="btag btag-item">'+b.item_name+'</span>':'')+(b.nature_name?'<span class="btag btag-nat">'+b.nature_name+'</span>':'')+(b.ability?'<span class="btag btag-abi">'+b.ability+'</span>':'')+bldMoveWarnPill(b)+bldAbiWarnPill(b)+'</div>'+
       '<div class="bld-moves"><div class="bmove">'+(b.move_1||'—')+'</div><div class="bmove">'+(b.move_2||'—')+'</div><div class="bmove">'+(b.move_3||'—')+'</div><div class="bmove">'+(b.move_4||'—')+'</div></div>'+
     '</div>';
   }).join('')+'</div>'
@@ -286,6 +286,15 @@ function movesetFontSize(names){
   if(maxLen<=18)return '.66rem';
   if(maxLen<=22)return '.58rem';
   return '.52rem';
+}
+
+// Drop G.3: Quick list-level ability flag. Uses allPkmnAbilities (loaded at boot)
+// so no async needed. Returns a btag-warn pill when ability is provably illegal.
+function bldAbiWarnPill(b){
+  if(!b.ability)return '';
+  var st=abilityLegalityState(b.ability,b.pokemon_id);
+  if(st==='illegal')return '<span class="btag btag-warn" title="\''+b.ability+'\' is not a valid ability for this Pok\u00e9mon"><i class="ph-fill ph-warning"></i> ability</span>';
+  return '';
 }
 
 // Drop E: Quick list-level flag. Counts slots where the move name isn't in
@@ -392,6 +401,7 @@ function renderEditorForm(c){
     '<input type="hidden" id="edAbi" value="'+curAbi.replace(/"/g,'&quot;')+'">'+
     '<button type="button" id="edAbiBtn" class="ed-abl-btn'+(curAbi?'':' empty')+'" onclick="openAbilityPicker()">'+
       '<span id="edAbiLabel">'+(curAbi||'Select ability…')+'</span>'+
+      '<span id="edAbiWarn" class="ed-abl-warn-icon" style="display:'+(abilityLegalityState(curAbi,selPkmnId)==='illegal'?'inline':'none')+'"><i class="ph-fill ph-warning"></i></span>'+
       '<i class="ph-bold ph-caret-right"></i>'+
     '</button>'+
   '</div>'+
@@ -526,9 +536,12 @@ function pickAbility(name){
   var inp=document.getElementById('edAbi');
   var lbl=document.getElementById('edAbiLabel');
   var btn=document.getElementById('edAbiBtn');
+  var warn=document.getElementById('edAbiWarn');
   if(inp)inp.value=name;
   if(lbl)lbl.textContent=name;
   if(btn)btn.classList.remove('empty');
+  // Drop G.3: update ability warning icon after picking
+  if(warn)warn.style.display=abilityLegalityState(name,selPkmnId)==='illegal'?'inline':'none';
   closeAbilityPicker();
 }
 
@@ -1158,6 +1171,8 @@ function renderBuildDetail(c){
   '</div>'+
   '<div class="pg-sub">'+b.build_name+(b.is_favourite?' ⭐':'')+(isShiny?' · <span style="color:var(--purple)">✦ Shiny</span>':'')+'</div></div>';
 
+  // Drop G.3: pre-compute ability legality for use in detail rendering
+  var _ablState=b.ability?abilityLegalityState(b.ability,b.pokemon_id):'empty';
   c.innerHTML=hdr+'<div class="bd-stack">'+
     // Drop F.2: Public pill (only renders when build is public)
     bdPublicPillHtml(b)+
@@ -1169,11 +1184,11 @@ function renderBuildDetail(c){
       (isShiny?'<div class="bd-shiny-badge">✦ Shiny Variant</div>':'')+
     '</div>'+
     // Summary tags
-    '<div class="bd-summary">'+(b.battle_format?'<span class="btag btag-fmt">'+b.battle_format+'</span>':'')+(b.archetype?'<span class="btag btag-arch">'+b.archetype+'</span>':'')+(b.item_name?'<span class="btag btag-item">'+b.item_name+'</span>':'')+(b.nature_name?'<span class="btag btag-nat">'+b.nature_name+'</span>':'')+(b.ability?'<span class="btag btag-abi">'+b.ability+'</span>':'')+'</div>'+
+    '<div class="bd-summary">'+(b.battle_format?'<span class="btag btag-fmt">'+b.battle_format+'</span>':'')+(b.archetype?'<span class="btag btag-arch">'+b.archetype+'</span>':'')+(b.item_name?'<span class="btag btag-item">'+b.item_name+'</span>':'')+(b.nature_name?'<span class="btag btag-nat">'+b.nature_name+'</span>':'')+(b.ability?'<span class="btag btag-abi'+(_ablState==='illegal'?' btag-warn':'')+'">'+(_ablState==='illegal'?'<i class="ph-fill ph-warning"></i> ':'')+b.ability+'</span>':'')+'</div>'+
     // Configuration
     '<div class="card"><h3 style="font-size:.85rem;font-weight:800;margin-bottom:.7rem">⚙️ Configuration</h3>'+
       '<div class="bd-config">'+
-        '<span class="bd-config-label">Ability</span><span class="bd-config-val">'+(b.ability||'—')+'</span>'+
+        '<span class="bd-config-label">Ability</span><span class="bd-config-val">'+(b.ability||'—')+(_ablState==='illegal'?' <span style="color:var(--gold)" title="Not a valid ability for this Pok\u00e9mon"><i class="ph-fill ph-warning"></i></span>':'')+'</span>'+
         '<span class="bd-config-label">Item</span><span class="bd-config-val">'+(b.item_name||'—')+'</span>'+
         '<span class="bd-config-label">Nature</span><span class="bd-config-val">'+natDetail+'</span>'+
         '<span class="bd-config-label">Archetype</span><span class="bd-config-val">'+(b.archetype||'—')+'</span>'+
